@@ -293,11 +293,12 @@ export default function ConsultyPage() {
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border bg-card rounded-t-xl">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full overflow-hidden bg-primary/10">
+          <div className="w-12 h-12 rounded-full overflow-hidden bg-transparent">
             <img
               src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Consulty%20AI%20Robot.png-vukUbYjKh8Lwss0u9o9p2SyD52gnuZ.jpeg"
               alt="Consulty AI"
               className="w-full h-full object-cover"
+              style={{ mixBlendMode: 'multiply' }}
             />
           </div>
           <div>
@@ -469,16 +470,16 @@ export default function ConsultyPage() {
       </div>
 
       {/* Input Area */}
-      <div className="p-4 border-t border-border bg-card rounded-b-xl">
+      <div className="p-4 border-t border-border bg-white rounded-b-xl">
         <div className="flex gap-2">
           <div className="flex-1 relative">
             <textarea
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Describe your symptoms..."
+              placeholder="Tell Consulty what hurts..."
               rows={1}
-              className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground resize-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="w-full px-4 py-3 rounded-xl border border-border bg-[#f8f9fa] text-foreground placeholder:text-muted-foreground resize-none focus:ring-2 focus:ring-primary focus:border-transparent"
               disabled={isTyping}
             />
           </div>

@@ -62,8 +62,20 @@ export interface DoctorProfile {
   rating: number;
   totalReviews: number;
   isAvailable: boolean;
+  location: string;
+  acceptsInsurance: boolean;
+  reviews?: DoctorReview[];
+  contactNumber?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface DoctorReview {
+  id: string;
+  rating: number;
+  comment: string;
+  date: string;
+  isAnonymous: boolean;
 }
 
 // ============================================================================

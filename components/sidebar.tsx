@@ -180,13 +180,13 @@ export function Sidebar({ role }: SidebarProps) {
 
       {/* Footer Actions */}
       <div className="p-4 border-t border-border">
-        <Link
-          href={`/${role}/help`}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors"
+        <button
+          onClick={handleHelpClick}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors"
         >
           <HelpCircle size={20} />
           Help
-        </Link>
+        </button>
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors"

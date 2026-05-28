@@ -17,6 +17,7 @@ import type {
   Conversation,
   Message
 } from './types';
+import { extendedDoctors } from './doctors-data';
 
 // ============================================================================
 // Department Data
@@ -172,28 +173,31 @@ const defaultSchedule: WeeklySchedule = {
 // Doctor Profiles - Diverse doctors across all departments
 // ============================================================================
 
-export const doctors: DoctorProfile[] = [
+const baseDoctors: DoctorProfile[] = [
   // Cardiology (3 doctors)
   {
     id: 'doc-001',
     userId: 'user-doc-001',
     firstName: 'Sarah',
     lastName: 'Chen',
-    email: 'sarah.chen@consultara.com',
-    phone: '+1-555-0101',
+    email: 'sarah.chen@consultara.ph',
+    phone: '+63-917-100-0101',
     specialization: 'Interventional Cardiology',
     department: 'cardiology',
-    licenseNumber: 'MD-CAR-001',
+    licenseNumber: 'PRC-0100001',
     yearsOfExperience: 15,
-    education: 'MD from Johns Hopkins University, Fellowship in Cardiology at Mayo Clinic',
+    education: 'MD from University of the Philippines Manila, Fellowship in Cardiology at Philippine Heart Center',
     bio: 'Dr. Sarah Chen is a board-certified cardiologist specializing in interventional procedures. She has performed over 2,000 cardiac catheterizations and is passionate about preventive cardiology.',
-    consultationFee: 150,
+    consultationFee: 1500,
     avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face',
     availability: defaultSchedule,
-    languages: ['English', 'Mandarin'],
+    languages: ['English', 'Filipino', 'Mandarin'],
     rating: 4.9,
     totalReviews: 342,
     isAvailable: true,
+    location: 'Makati City',
+    acceptsInsurance: true,
+    contactNumber: '+63-2-8100-0101',
     createdAt: '2023-01-15T00:00:00Z',
     updatedAt: '2024-01-15T00:00:00Z'
   },
@@ -202,21 +206,24 @@ export const doctors: DoctorProfile[] = [
     userId: 'user-doc-002',
     firstName: 'Marcus',
     lastName: 'Williams',
-    email: 'marcus.williams@consultara.com',
-    phone: '+1-555-0102',
+    email: 'marcus.williams@consultara.ph',
+    phone: '+63-917-100-0102',
     specialization: 'Electrophysiology',
     department: 'cardiology',
-    licenseNumber: 'MD-CAR-002',
+    licenseNumber: 'PRC-0100002',
     yearsOfExperience: 12,
-    education: 'MD from Harvard Medical School, Residency at Massachusetts General Hospital',
+    education: 'MD from University of Santo Tomas, Fellowship at St. Lukes Medical Center',
     bio: 'Dr. Marcus Williams specializes in heart rhythm disorders and cardiac electrophysiology. He has pioneered several minimally invasive techniques for arrhythmia treatment.',
-    consultationFee: 160,
+    consultationFee: 1600,
     avatar: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face',
     availability: defaultSchedule,
-    languages: ['English', 'Spanish'],
+    languages: ['English', 'Filipino'],
     rating: 4.8,
     totalReviews: 287,
     isAvailable: true,
+    location: 'Quezon City',
+    acceptsInsurance: true,
+    contactNumber: '+63-2-8100-0102',
     createdAt: '2023-02-20T00:00:00Z',
     updatedAt: '2024-01-15T00:00:00Z'
   },
@@ -225,18 +232,18 @@ export const doctors: DoctorProfile[] = [
     userId: 'user-doc-003',
     firstName: 'Priya',
     lastName: 'Patel',
-    email: 'priya.patel@consultara.com',
-    phone: '+1-555-0103',
+    email: 'priya.patel@consultara.ph',
+    phone: '+63-917-100-0103',
     specialization: 'Heart Failure & Transplant',
     department: 'cardiology',
-    licenseNumber: 'MD-CAR-003',
+    licenseNumber: 'PRC-0100003',
     yearsOfExperience: 18,
-    education: 'MD from Stanford University, Fellowship at Cleveland Clinic',
+    education: 'MD from Ateneo School of Medicine, Fellowship at Philippine Heart Center',
     bio: 'Dr. Priya Patel is an expert in advanced heart failure management and cardiac transplantation. She leads the heart failure program with a focus on innovative therapies.',
-    consultationFee: 180,
+    consultationFee: 1800,
     avatar: 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face',
     availability: defaultSchedule,
-    languages: ['English', 'Hindi', 'Gujarati'],
+    languages: ['English', 'Filipino', 'Hindi'],
     rating: 4.9,
     totalReviews: 456,
     isAvailable: true,
@@ -764,10 +771,31 @@ export const doctors: DoctorProfile[] = [
     rating: 4.9,
     totalReviews: 298,
     isAvailable: true,
+    location: 'Quezon City',
+    acceptsInsurance: true,
+    contactNumber: '+63-2-8100-0125',
     createdAt: '2022-12-10T00:00:00Z',
     updatedAt: '2024-01-15T00:00:00Z'
   }
 ];
+
+// Metro Manila locations for default assignment
+const metroManilaLocations = [
+  'Makati City', 'Quezon City', 'Manila', 'Taguig City', 'Pasig City',
+  'Mandaluyong City', 'San Juan City', 'Parañaque City', 'Pasay City',
+  'Muntinlupa City', 'Las Piñas City', 'Marikina City', 'Caloocan City',
+];
+
+// Add default values for location, acceptsInsurance, and contactNumber if missing
+const normalizedBaseDoctors = baseDoctors.map((doc, index) => ({
+  ...doc,
+  location: doc.location || metroManilaLocations[index % metroManilaLocations.length],
+  acceptsInsurance: doc.acceptsInsurance !== undefined ? doc.acceptsInsurance : index % 3 !== 2,
+  contactNumber: doc.contactNumber || `+63-2-8100-${String(index + 1).padStart(4, '0')}`,
+}));
+
+// Combine base doctors with extended doctors
+export const doctors: DoctorProfile[] = [...normalizedBaseDoctors, ...extendedDoctors];
 
 // ============================================================================
 // Sample Patient Profile
@@ -776,18 +804,18 @@ export const doctors: DoctorProfile[] = [
 export const samplePatient: PatientProfile = {
   id: 'patient-001',
   userId: 'user-patient-001',
-  firstName: 'John',
-  lastName: 'Doe',
-  email: 'john.doe@email.com',
-  phone: '+1-555-1234',
+  firstName: 'Juan',
+  lastName: 'Dela Cruz',
+  email: 'juan.delacruz@email.com',
+  phone: '+63-917-123-4567',
   dateOfBirth: '1990-05-15',
   gender: 'male',
-  address: '123 Main Street',
-  city: 'San Francisco',
-  state: 'California',
-  zipCode: '94102',
-  emergencyContact: 'Jane Doe',
-  emergencyPhone: '+1-555-5678',
+  address: '123 Rizal Street',
+  city: 'Makati City',
+  state: 'Metro Manila',
+  zipCode: '1200',
+  emergencyContact: 'Maria Dela Cruz',
+  emergencyPhone: '+63-917-765-4321',
   bloodType: 'O+',
   allergies: ['Penicillin', 'Peanuts'],
   medicalConditions: ['Mild Asthma'],
@@ -1100,17 +1128,24 @@ export const DEPARTMENTS = [
 ];
 
 /**
- * Available locations for filtering
+ * Available locations for filtering (Metro Manila)
  */
 export const LOCATIONS = [
-  'San Francisco, CA',
-  'Los Angeles, CA',
-  'New York, NY',
-  'Chicago, IL',
-  'Houston, TX',
-  'Phoenix, AZ',
-  'Philadelphia, PA',
-  'San Antonio, TX',
-  'San Diego, CA',
-  'Dallas, TX',
+  'Makati City',
+  'Quezon City',
+  'Manila',
+  'Taguig City',
+  'Pasig City',
+  'Mandaluyong City',
+  'San Juan City',
+  'Parañaque City',
+  'Pasay City',
+  'Muntinlupa City',
+  'Las Piñas City',
+  'Marikina City',
+  'Caloocan City',
+  'Valenzuela City',
+  'Malabon City',
+  'Navotas City',
+  'Pateros',
 ];

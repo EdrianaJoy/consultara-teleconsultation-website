@@ -54,9 +54,9 @@ const departmentDescriptions: Record<string, string> = {
   "Pediatrics": "Child healthcare experts providing comprehensive care for infants, children, and adolescents.",
   "Dermatology": "Skin, hair, and nail specialists treating acne, eczema, psoriasis, and skin conditions.",
   "General Medicine": "Primary care physicians for routine checkups, preventive care, and common illnesses.",
-  "Gynecology": "Women&apos;s health specialists for reproductive health, pregnancy, and hormonal issues.",
+  "Gynecology": "Women's health specialists for reproductive health, pregnancy care, and hormonal management.",
   "Psychiatry": "Mental health experts treating depression, anxiety, PTSD, and other psychiatric conditions.",
-  "Surgery": "Surgical specialists for both elective and emergency surgical procedures.",
+  "ENT": "Ear, nose, and throat specialists treating hearing loss, sinusitis, voice disorders, and related conditions.",
 };
 
 /**
