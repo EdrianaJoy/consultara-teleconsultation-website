@@ -29,7 +29,9 @@ import {
   X,
   Users,
   Clock,
-  ClipboardList
+  ClipboardList,
+  Bot,
+  User
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
@@ -62,6 +64,7 @@ function getNavSections(role: "patient" | "doctor"): NavSection[] {
         items: [
           { label: "Dashboard", href: "/patient/dashboard", icon: <LayoutDashboard size={20} /> },
           { label: "Our Services", href: "/patient/services", icon: <Stethoscope size={20} /> },
+          { label: "Consulty AI", href: "/patient/consulty", icon: <Bot size={20} /> },
           { label: "Contact Us", href: "/patient/contact", icon: <Phone size={20} /> },
         ],
       },
@@ -92,6 +95,7 @@ function getNavSections(role: "patient" | "doctor"): NavSection[] {
         { label: "Messages", href: "/doctor/messages", icon: <MessageSquare size={20} /> },
         { label: "Consultations", href: "/doctor/consultations", icon: <ClipboardList size={20} /> },
         { label: "Calendar", href: "/doctor/calendar", icon: <Calendar size={20} /> },
+        { label: "My Profile", href: "/doctor/profile", icon: <User size={20} /> },
       ],
     },
   ];
