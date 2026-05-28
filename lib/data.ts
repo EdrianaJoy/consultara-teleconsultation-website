@@ -1078,3 +1078,39 @@ export function getAvailableSlots(doctorId: string, date: string): { startTime: 
     .filter(slot => slot.isAvailable)
     .map(({ startTime, endTime }) => ({ startTime, endTime }));
 }
+
+// ============================================================================
+// Constants for UI
+// ============================================================================
+
+/**
+ * Department names for filtering
+ */
+export const DEPARTMENTS = [
+  'Cardiology',
+  'Dermatology',
+  'Pediatrics',
+  'Neurology',
+  'Orthopedics',
+  'Gynecology',
+  'Ophthalmology',
+  'Psychiatry',
+  'General Medicine',
+  'ENT',
+];
+
+/**
+ * Available locations for filtering
+ */
+export const LOCATIONS = [
+  'San Francisco, CA',
+  'Los Angeles, CA',
+  'New York, NY',
+  'Chicago, IL',
+  'Houston, TX',
+  'Phoenix, AZ',
+  'Philadelphia, PA',
+  'San Antonio, TX',
+  'San Diego, CA',
+  'Dallas, TX',
+];

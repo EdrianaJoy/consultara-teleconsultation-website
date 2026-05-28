@@ -41,6 +41,7 @@ interface AppDataContextType extends AppDataState {
   // Appointment actions
   createAppointment: (appointment: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>) => Appointment;
   updateAppointment: (id: string, updates: Partial<Appointment>) => void;
+  updateAppointmentStatus: (id: string, status: AppointmentStatus) => void;
   cancelAppointment: (id: string) => void;
   getAppointmentsByPatient: (patientId: string) => Appointment[];
   getAppointmentsByDoctor: (doctorId: string) => Appointment[];
@@ -173,6 +174,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
   const cancelAppointment = useCallback((id: string) => {
     updateAppointment(id, { status: 'cancelled' as AppointmentStatus });
+  }, [updateAppointment]);
+
+  const updateAppointmentStatus = useCallback((id: string, status: AppointmentStatus) => {
+    updateAppointment(id, { status });
   }, [updateAppointment]);
 
   const getAppointmentsByPatient = useCallback((patientId: string): Appointment[] => {
@@ -339,6 +344,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     ...state,
     createAppointment,
     updateAppointment,
+    updateAppointmentStatus,
     cancelAppointment,
     getAppointmentsByPatient,
     getAppointmentsByDoctor,
