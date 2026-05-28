@@ -27,6 +27,7 @@ interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signUp: (email: string, password: string, role: UserRole) => Promise<{ success: boolean; error?: string }>;
   signOut: () => void;
+  logout: () => void;
   selectRole: (role: UserRole) => void;
   updatePatientProfile: (profile: Partial<PatientProfile>) => void;
   updateDoctorProfile: (profile: Partial<DoctorProfile>) => void;
@@ -100,8 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    // For demo: accept any email/password
-    // Check if this email belongs to a doctor
+    // Check if this email belongs to a doctor in the system
     const existingDoctor = doctors.find(d => d.email.toLowerCase() === email.toLowerCase());
     
     if (existingDoctor) {
@@ -127,11 +127,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: true };
     }
 
-    // Check if returning user
+    // Check if returning user (has an existing account in localStorage)
     const savedUser = localStorage.getItem(STORAGE_KEYS.USER);
     if (savedUser) {
       const user = JSON.parse(savedUser) as User;
-      if (user.email === email) {
+      if (user.email.toLowerCase() === email.toLowerCase()) {
         const patientProfile = localStorage.getItem(STORAGE_KEYS.PATIENT_PROFILE);
         const doctorProfile = localStorage.getItem(STORAGE_KEYS.DOCTOR_PROFILE);
 
@@ -147,26 +147,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // New user - need to select role
-    const user: User = {
-      id: `user-${Date.now()}`,
-      email,
-      role: 'patient', // Default, will be changed when role is selected
-      createdAt: new Date().toISOString(),
+    // No account found - show error message prompting user to sign up
+    return { 
+      success: false, 
+      error: 'No account found with this email. Please sign up first to create an account.' 
     };
-
-    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
-    localStorage.setItem(STORAGE_KEYS.PENDING_ROLE, 'true');
-
-    setState({
-      user,
-      patientProfile: null,
-      doctorProfile: null,
-      isLoading: false,
-      isAuthenticated: true,
-    });
-
-    return { success: true };
   }, []);
 
   // Sign up function
@@ -365,6 +350,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signUp,
     signOut,
+    logout: signOut,
     selectRole,
     updatePatientProfile,
     updateDoctorProfile,
