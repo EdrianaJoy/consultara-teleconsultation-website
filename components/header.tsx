@@ -15,7 +15,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { Bell, User, Settings, LogOut, ChevronDown } from "lucide-react";
+import { Bell, User, LogOut, ChevronDown } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useAppData } from "@/lib/app-data-context";
 import { cn } from "@/lib/utils";
@@ -62,12 +62,25 @@ export function Header({ title }: HeaderProps) {
     logout();
   };
 
-  // Get display name
-  const displayName = user?.role === "patient" 
-    ? (user as any).firstName || "User"
-    : user?.role === "doctor" 
-      ? `Dr. ${(user as any).lastName || "User"}`
-      : "User";
+  // Get display name from profile or user
+  const getDisplayName = () => {
+    if (user?.role === "patient") {
+      const patientProfile = (user as any);
+      if (patientProfile?.firstName) {
+        return `${patientProfile.firstName} ${patientProfile.lastName || ''}`.trim();
+      }
+      return "Patient";
+    } else if (user?.role === "doctor") {
+      const doctorProfile = (user as any);
+      if (doctorProfile?.lastName) {
+        return `Dr. ${doctorProfile.lastName}`;
+      }
+      return "Doctor";
+    }
+    return "User";
+  };
+
+  const displayName = getDisplayName();
 
   const profilePath = user?.role === "patient" ? "/patient/profile" : "/doctor/profile";
 
@@ -177,14 +190,6 @@ export function Header({ title }: HeaderProps) {
                 >
                   <User size={16} />
                   My Profile
-                </Link>
-                <Link
-                  href={`/${user?.role}/settings`}
-                  className="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted rounded-md transition-colors"
-                  onClick={() => setIsProfileOpen(false)}
-                >
-                  <Settings size={16} />
-                  Settings
                 </Link>
                 <button
                   onClick={handleLogout}

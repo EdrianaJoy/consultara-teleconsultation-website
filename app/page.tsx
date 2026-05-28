@@ -63,7 +63,7 @@ export default function LandingPage() {
                   Sign In
                 </Button>
               </Link>
-              <Link href="/auth/signin">
+              <Link href="/auth/signup">
                 <Button className="bg-[#769382] hover:bg-[#769382]/90 text-white">
                   Get Started
                 </Button>
@@ -114,7 +114,7 @@ export default function LandingPage() {
                     {[1, 2, 3, 4].map((i) => (
                       <div 
                         key={i} 
-                        className="w-8 h-8 rounded-full bg-[#769382]/20 border-2 border-white flex items-center justify-center text-xs text-[#769382] font-medium"
+                        className="w-8 h-8 rounded-full bg-[#769382] border-2 border-white flex items-center justify-center text-xs text-white font-bold"
                       >
                         {i}K+
                       </div>
@@ -124,9 +124,9 @@ export default function LandingPage() {
                 </div>
                 <div className="flex items-center gap-1">
                   {[1, 2, 3, 4, 5].map((i) => (
-                    <Star key={i} className="w-4 h-4 fill-[#FFEBBC] text-[#FFEBBC]" />
+                    <Star key={i} className="w-5 h-5 fill-[#F59E0B] text-[#F59E0B]" />
                   ))}
-                  <span className="text-sm text-[#2D3B35]/70 ml-1">4.9/5</span>
+                  <span className="text-sm text-[#2D3B35] font-medium ml-1">4.9/5</span>
                 </div>
               </div>
             </div>
@@ -296,6 +296,10 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+
+          <p className="text-center mt-6 text-[#2D3B35] font-semibold">
+            10 Departments Available
+          </p>
         </div>
       </section>
 
@@ -318,7 +322,7 @@ export default function LandingPage() {
           <div className="mt-12 grid grid-cols-3 gap-8">
             {[
               { value: '25+', label: 'Specialist Doctors' },
-              { value: '10+', label: 'Departments' },
+              { value: '10', label: 'Departments' },
               { value: '4.9', label: 'Average Rating' }
             ].map((stat, index) => (
               <div key={index}>
@@ -344,9 +348,9 @@ export default function LandingPage() {
               
               <div className="space-y-4">
                 {[
-                  { label: 'Email', value: 'support@consultara.com' },
-                  { label: 'Phone', value: '+1 (555) 123-4567' },
-                  { label: 'Address', value: '123 Healthcare Ave, Medical City, MC 12345' }
+                  { label: 'Email', value: 'support@consultara.ph' },
+                  { label: 'Phone', value: '+63 (2) 8123-4567' },
+                  { label: 'Address', value: 'BGC Corporate Center, 30th Street, Bonifacio Global City, Taguig, Metro Manila, Philippines' }
                 ].map((item, index) => (
                   <div key={index} className="flex items-center gap-4">
                     <CheckCircle className="w-5 h-5 text-[#769382]" />
