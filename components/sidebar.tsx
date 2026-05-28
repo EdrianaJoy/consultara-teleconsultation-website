@@ -14,7 +14,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { 
   LayoutDashboard, 
@@ -30,8 +30,7 @@ import {
   Users,
   Clock,
   ClipboardList,
-  Bot,
-  User
+  Bot
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
@@ -95,7 +94,6 @@ function getNavSections(role: "patient" | "doctor"): NavSection[] {
         { label: "Messages", href: "/doctor/messages", icon: <MessageSquare size={20} /> },
         { label: "Consultations", href: "/doctor/consultations", icon: <ClipboardList size={20} /> },
         { label: "Calendar", href: "/doctor/calendar", icon: <Calendar size={20} /> },
-        { label: "My Profile", href: "/doctor/profile", icon: <User size={20} /> },
       ],
     },
   ];
@@ -116,6 +114,7 @@ interface SidebarProps {
  */
 export function Sidebar({ role }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { logout } = useAuth();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   
@@ -123,6 +122,13 @@ export function Sidebar({ role }: SidebarProps) {
 
   const handleLogout = () => {
     logout();
+    // Redirect to main page (landing page) instead of login page
+    router.push('/');
+  };
+
+  const handleHelpClick = () => {
+    // Navigate to how it works section on landing page
+    router.push('/#how-it-works');
   };
 
   const sidebarContent = (

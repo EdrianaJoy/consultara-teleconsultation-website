@@ -92,15 +92,15 @@ export default function SignInPage() {
 
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email/Phone Field */}
+            {/* Email Field */}
             <div className="space-y-2">
               <Label htmlFor="email" className="text-[#2D3B35] text-sm">
-                Login
+                Email
               </Label>
               <Input
                 id="email"
-                type="text"
-                placeholder="Email or phone number"
+                type="email"
+                placeholder="Enter your email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="h-12 bg-[#C0C3B9]/30 border-[#C0C3B9] focus:border-[#769382] focus:ring-[#769382] placeholder:text-[#2D3B35]/50"
