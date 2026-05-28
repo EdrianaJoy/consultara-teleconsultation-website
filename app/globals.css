@@ -1,0 +1,134 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* ConsulTara Brand Colors */
+  --sage: #769382;
+  --cream: #FFEBBC;
+  --mist: #C0C3B9;
+  --ivory: #F3EFE3;
+  
+  /* Semantic tokens mapped to brand colors */
+  --background: #F3EFE3;
+  --foreground: #2D3B35;
+  --card: #FFFFFF;
+  --card-foreground: #2D3B35;
+  --popover: #FFFFFF;
+  --popover-foreground: #2D3B35;
+  --primary: #769382;
+  --primary-foreground: #FFFFFF;
+  --secondary: #FFEBBC;
+  --secondary-foreground: #2D3B35;
+  --muted: #C0C3B9;
+  --muted-foreground: #5A6B62;
+  --accent: #FFEBBC;
+  --accent-foreground: #2D3B35;
+  --destructive: #DC3545;
+  --destructive-foreground: #FFFFFF;
+  --border: #C0C3B9;
+  --input: #FFFFFF;
+  --ring: #769382;
+  --chart-1: #769382;
+  --chart-2: #FFEBBC;
+  --chart-3: #C0C3B9;
+  --chart-4: #5A6B62;
+  --chart-5: #A8B5AC;
+  --radius: 0.625rem;
+  --sidebar: #769382;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: #FFFFFF;
+  --sidebar-primary-foreground: #769382;
+  --sidebar-accent: rgba(255, 255, 255, 0.1);
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: rgba(255, 255, 255, 0.2);
+  --sidebar-ring: #FFFFFF;
+}
+
+@theme inline {
+  --font-sans: 'Geist', 'Geist Fallback', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback', monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  
+  /* Custom brand color utilities */
+  --color-sage: #769382;
+  --color-cream: #FFEBBC;
+  --color-mist: #C0C3B9;
+  --color-ivory: #F3EFE3;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--mist);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--sage);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #5f7a6a;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Focus visible styles for accessibility */
+:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 2px;
+}
