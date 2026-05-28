@@ -33,7 +33,7 @@ interface HeaderProps {
  * Displays user information, notifications, and profile dropdown.
  */
 export function Header({ title }: HeaderProps) {
-  const { user, logout } = useAuth();
+  const { user, patientProfile, doctorProfile, logout } = useAuth();
   const { notifications } = useAppData();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -64,16 +64,17 @@ export function Header({ title }: HeaderProps) {
 
   // Get display name from profile or user
   const getDisplayName = () => {
-    if (user?.role === "patient") {
-      const patientProfile = (user as any);
-      if (patientProfile?.firstName) {
+    if (user?.role === "patient" && patientProfile) {
+      if (patientProfile.firstName) {
         return `${patientProfile.firstName} ${patientProfile.lastName || ''}`.trim();
       }
       return "Patient";
-    } else if (user?.role === "doctor") {
-      const doctorProfile = (user as any);
-      if (doctorProfile?.lastName) {
+    } else if (user?.role === "doctor" && doctorProfile) {
+      if (doctorProfile.lastName) {
         return `Dr. ${doctorProfile.lastName}`;
+      }
+      if (doctorProfile.firstName) {
+        return `Dr. ${doctorProfile.firstName}`;
       }
       return "Doctor";
     }
@@ -82,6 +83,17 @@ export function Header({ title }: HeaderProps) {
 
   const displayName = getDisplayName();
 
+  // Get avatar from profile
+  const getAvatar = () => {
+    if (user?.role === "patient" && patientProfile?.avatar) {
+      return patientProfile.avatar;
+    } else if (user?.role === "doctor" && doctorProfile?.avatar) {
+      return doctorProfile.avatar;
+    }
+    return null;
+  };
+
+  const avatar = getAvatar();
   const profilePath = user?.role === "patient" ? "/patient/profile" : "/doctor/profile";
 
   return (
@@ -162,9 +174,9 @@ export function Header({ title }: HeaderProps) {
             aria-label="User menu"
           >
             <div className="w-10 h-10 rounded-full bg-accent overflow-hidden flex items-center justify-center">
-              {user?.avatar ? (
+              {avatar ? (
                 <img 
-                  src={user.avatar} 
+                  src={avatar} 
                   alt={displayName}
                   className="w-full h-full object-cover"
                 />

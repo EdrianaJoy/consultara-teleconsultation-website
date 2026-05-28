@@ -177,7 +177,7 @@ function generateResponse(symptoms: string, analysis: SymptomAnalysis): string {
 export default function ConsultyPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, patientProfile } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -185,26 +185,51 @@ export default function ConsultyPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [currentAnalysis, setCurrentAnalysis] = useState<SymptomAnalysis | null>(null);
 
-  // Initial welcome message
+  // Load chat history from localStorage
   useEffect(() => {
-    const initialSymptoms = searchParams.get("symptoms");
-    
+    const savedMessages = localStorage.getItem('consultara_consulty_history');
+    if (savedMessages) {
+      try {
+        const parsed = JSON.parse(savedMessages);
+        // Convert timestamp strings back to Date objects
+        const restored = parsed.map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }));
+        setMessages(restored);
+        return;
+      } catch (e) {
+        console.error('Error loading chat history:', e);
+      }
+    }
+
+    // Initial welcome message if no history
+    const patientName = patientProfile?.firstName || "";
     const welcomeMessage: Message = {
       id: "welcome",
       role: "assistant",
-      content: `Hello${user ? `, ${(user as any).firstName || ""}` : ""}! I'm Consulty, your AI health assistant. I can help you find the right doctor based on your symptoms.\n\nPlease describe what you're experiencing, and I'll recommend the appropriate department and doctors for you.`,
+      content: `Hello${patientName ? `, ${patientName}` : ""}! I'm Consulty, your AI health assistant. I can help you find the right doctor based on your symptoms.\n\nPlease describe what you're experiencing, and I'll recommend the appropriate department and doctors for you.`,
       timestamp: new Date(),
     };
-
     setMessages([welcomeMessage]);
+  }, [patientProfile]);
 
-    // If symptoms were passed via URL, process them
-    if (initialSymptoms) {
+  // Save chat history to localStorage whenever messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem('consultara_consulty_history', JSON.stringify(messages));
+    }
+  }, [messages]);
+
+  // Process initial symptoms from URL
+  useEffect(() => {
+    const initialSymptoms = searchParams.get("symptoms");
+    if (initialSymptoms && messages.length <= 1) {
       setTimeout(() => {
         handleSendMessage(initialSymptoms);
       }, 500);
     }
-  }, []);
+  }, [searchParams]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -293,12 +318,12 @@ export default function ConsultyPage() {
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border bg-card rounded-t-xl">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full overflow-hidden bg-transparent">
+          <div className="w-12 h-12 rounded-full overflow-hidden bg-white flex items-center justify-center">
             <img
               src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Consulty%20AI%20Robot.png-vukUbYjKh8Lwss0u9o9p2SyD52gnuZ.jpeg"
               alt="Consulty AI"
-              className="w-full h-full object-cover"
-              style={{ mixBlendMode: 'multiply' }}
+              className="w-full h-full object-contain"
+              style={{ background: 'transparent' }}
             />
           </div>
           <div>

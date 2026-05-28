@@ -227,6 +227,7 @@ export default function CalendarPage() {
             ) : (
               (selectedDate ? selectedDateAppointments : patientAppointments.filter(a => a.status !== "cancelled").slice(0, 5)).map((apt) => {
                 const doctor = doctors.find(d => d.id === apt.doctorId);
+                const doctorName = doctor ? `Dr. ${doctor.firstName} ${doctor.lastName}` : "Doctor";
                 return (
                   <div
                     key={apt.id}
@@ -243,7 +244,7 @@ export default function CalendarPage() {
                         {doctor?.avatar ? (
                           <img 
                             src={doctor.avatar} 
-                            alt={doctor.name}
+                            alt={doctorName}
                             className="w-full h-full object-cover"
                           />
                         ) : (
@@ -254,18 +255,18 @@ export default function CalendarPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-foreground text-sm truncate">
-                          {doctor?.name || "Doctor"}
+                          {doctorName}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {doctor?.specialty}
+                          {doctor?.specialization}
                         </p>
                         <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
                           <Clock size={12} />
-                          <span>{apt.date} at {apt.time}</span>
+                          <span>{apt.date} at {apt.timeSlot?.startTime || "TBD"}</span>
                         </div>
                         <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                          {apt.type === "video" ? <Video size={12} /> : <MessageSquare size={12} />}
-                          <span className="capitalize">{apt.type} Consultation</span>
+                          {apt.consultationType === "video" ? <Video size={12} /> : <MessageSquare size={12} />}
+                          <span className="capitalize">{apt.consultationType} Consultation</span>
                         </div>
                       </div>
                     </div>

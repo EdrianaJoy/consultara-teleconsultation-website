@@ -6,7 +6,7 @@
  * - Specialty and experience
  * - Availability schedule
  * - Reviews and ratings
- * - Booking functionality
+ * - Booking functionality with payment options
  * 
  * @module app/patient/doctors/[id]/page
  */
@@ -26,12 +26,18 @@ import {
   GraduationCap,
   Phone,
   MessageSquare,
-  CheckCircle
+  CheckCircle,
+  Shield,
+  CreditCard,
+  Wallet,
+  Building2,
+  Languages
 } from "lucide-react";
-import { doctors } from "@/lib/data";
+import { doctors, departments } from "@/lib/data";
 import { useAuth } from "@/lib/auth-context";
 import { useAppData } from "@/lib/app-data-context";
 import { Button } from "@/components/ui/button";
+import { DoctorProfile } from "@/lib/types";
 
 /**
  * Generate available time slots for a given date
@@ -51,7 +57,7 @@ function generateTimeSlots(): string[] {
 /**
  * Get next 7 days for booking
  */
-function getNextDays(count: number): { date: string; dayName: string; dayNum: string }[] {
+function getNextDays(count: number): { date: string; dayName: string; dayNum: string; isToday: boolean }[] {
   const days = [];
   const today = new Date();
   
@@ -62,11 +68,31 @@ function getNextDays(count: number): { date: string; dayName: string; dayNum: st
       date: date.toISOString().split("T")[0],
       dayName: date.toLocaleDateString("en-US", { weekday: "short" }),
       dayNum: date.getDate().toString(),
+      isToday: i === 0,
     });
   }
   
   return days;
 }
+
+/**
+ * Get department name from ID
+ */
+function getDeptNameFromId(deptId: string): string {
+  const dept = departments.find(d => d.id === deptId);
+  return dept?.name || deptId;
+}
+
+/**
+ * Payment methods
+ */
+const paymentMethods = [
+  { id: "gcash", name: "GCash", icon: Wallet, description: "Pay via GCash e-wallet" },
+  { id: "maya", name: "Maya", icon: Wallet, description: "Pay via Maya e-wallet" },
+  { id: "card", name: "Credit/Debit Card", icon: CreditCard, description: "Visa, Mastercard, etc." },
+  { id: "bank", name: "Bank Transfer", icon: Building2, description: "BDO, BPI, Metrobank, etc." },
+  { id: "insurance", name: "Health Insurance", icon: Shield, description: "HMO, PhilHealth" },
+];
 
 /**
  * Doctor Profile Page Component
@@ -78,25 +104,26 @@ export default function DoctorProfilePage({
 }) {
   const resolvedParams = use(params);
   const router = useRouter();
-  const { user } = useAuth();
-  const { addAppointment, addNotification } = useAppData();
+  const { user, patientProfile } = useAuth();
+  const { createAppointment, addNotification } = useAppData();
   
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [consultationType, setConsultationType] = useState<"video" | "chat">("video");
+  const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [reason, setReason] = useState("");
   const [isBooking, setIsBooking] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
 
   // Find doctor
-  const doctor = doctors.find(d => d.id === resolvedParams.id);
+  const doctor = doctors.find(d => d.id === resolvedParams.id) as DoctorProfile | undefined;
 
   if (!doctor) {
     return (
       <div className="text-center py-12">
         <h1 className="text-2xl font-bold text-foreground mb-4">Doctor Not Found</h1>
         <p className="text-muted-foreground mb-6">
-          The doctor you&apos;re looking for doesn&apos;t exist.
+          The doctor you are looking for does not exist.
         </p>
         <Link href="/patient/search">
           <Button>Back to Search</Button>
@@ -105,14 +132,20 @@ export default function DoctorProfilePage({
     );
   }
 
+  const fullName = `Dr. ${doctor.firstName} ${doctor.lastName}`;
   const availableDays = getNextDays(7);
   const timeSlots = generateTimeSlots();
+
+  // Check if doctor accepts insurance
+  const availablePaymentMethods = doctor.acceptsInsurance 
+    ? paymentMethods 
+    : paymentMethods.filter(p => p.id !== "insurance");
 
   /**
    * Handle appointment booking
    */
   const handleBookAppointment = async () => {
-    if (!selectedDate || !selectedTime || !user) return;
+    if (!selectedDate || !selectedTime || !user || !paymentMethod) return;
 
     setIsBooking(true);
 
@@ -120,30 +153,23 @@ export default function DoctorProfilePage({
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     // Create appointment
-    const appointment = {
-      id: `apt-${Date.now()}`,
+    const appointment = createAppointment({
       patientId: user.id,
       doctorId: doctor.id,
       date: selectedDate,
-      time: selectedTime,
-      type: consultationType,
-      status: "confirmed" as const,
-      reason: reason || "General Consultation",
-      notes: "",
-      createdAt: new Date().toISOString(),
-    };
+      timeSlot: { startTime: selectedTime, endTime: selectedTime, isAvailable: false },
+      consultationType: consultationType,
+      status: "confirmed",
+      symptoms: reason || "General Consultation",
+    });
 
-    addAppointment(appointment);
-
-    // Add notification
+    // Add notification for the patient
     addNotification({
-      id: `notif-${Date.now()}`,
       userId: user.id,
-      type: "appointment",
+      type: "appointment-confirmed",
       title: "Appointment Confirmed",
-      message: `Your ${consultationType} consultation with ${doctor.name} is confirmed for ${selectedDate} at ${selectedTime}.`,
-      read: false,
-      createdAt: new Date().toISOString(),
+      message: `Your ${consultationType} consultation with ${fullName} is confirmed for ${new Date(selectedDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} at ${selectedTime}. Payment method: ${paymentMethods.find(p => p.id === paymentMethod)?.name}.`,
+      isRead: false,
     });
 
     setIsBooking(false);
@@ -158,7 +184,7 @@ export default function DoctorProfilePage({
         </div>
         <h1 className="text-2xl font-bold text-foreground mb-4">Booking Confirmed!</h1>
         <p className="text-muted-foreground mb-6">
-          Your {consultationType} consultation with {doctor.name} has been scheduled for{" "}
+          Your {consultationType} consultation with {fullName} has been scheduled for{" "}
           {new Date(selectedDate).toLocaleDateString("en-US", { 
             weekday: "long", 
             year: "numeric", 
@@ -166,12 +192,24 @@ export default function DoctorProfilePage({
             day: "numeric" 
           })} at {selectedTime}.
         </p>
+        <div className="bg-card rounded-xl p-4 border border-border mb-6 text-left">
+          <h3 className="font-medium text-foreground mb-2">Booking Details</h3>
+          <div className="space-y-2 text-sm">
+            <p><span className="text-muted-foreground">Doctor:</span> {fullName}</p>
+            <p><span className="text-muted-foreground">Specialty:</span> {doctor.specialization}</p>
+            <p><span className="text-muted-foreground">Fee:</span> ₱{doctor.consultationFee.toLocaleString()}</p>
+            <p><span className="text-muted-foreground">Payment:</span> {paymentMethods.find(p => p.id === paymentMethod)?.name}</p>
+          </div>
+        </div>
         <div className="space-y-3">
           <Link href="/patient/calendar">
             <Button className="w-full">View My Appointments</Button>
           </Link>
+          <Link href="/patient/records">
+            <Button variant="outline" className="w-full">View Medical Records</Button>
+          </Link>
           <Link href="/patient/dashboard">
-            <Button variant="outline" className="w-full">Back to Dashboard</Button>
+            <Button variant="ghost" className="w-full">Back to Dashboard</Button>
           </Link>
         </div>
       </div>
@@ -199,37 +237,46 @@ export default function DoctorProfilePage({
                 {doctor.avatar ? (
                   <img 
                     src={doctor.avatar} 
-                    alt={doctor.name}
+                    alt={fullName}
                     className="w-full h-full object-cover"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-muted-foreground text-4xl">
-                    {doctor.name.charAt(0)}
+                    {doctor.firstName.charAt(0)}{doctor.lastName.charAt(0)}
                   </div>
                 )}
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-foreground">{doctor.name}</h1>
-                <p className="text-primary text-lg">{doctor.specialty}</p>
+                <h1 className="text-2xl font-bold text-foreground">{fullName}</h1>
+                <p className="text-primary text-lg font-medium">{doctor.specialization}</p>
+                <p className="text-sm text-muted-foreground">{getDeptNameFromId(doctor.department)}</p>
                 
                 <div className="flex items-center gap-1 mt-2">
                   <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                  <span className="font-medium text-foreground">{doctor.rating}</span>
+                  <span className="font-medium text-foreground">{doctor.rating.toFixed(1)}</span>
                   <span className="text-muted-foreground">
-                    ({doctor.reviewCount} reviews)
+                    ({doctor.totalReviews} reviews)
                   </span>
                 </div>
 
                 <div className="flex flex-wrap gap-4 mt-3 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <MapPin size={16} />
-                    {doctor.location}
+                    {doctor.location || 'Metro Manila'}
                   </div>
                   <div className="flex items-center gap-1">
                     <Clock size={16} />
-                    {doctor.experience} years experience
+                    {doctor.yearsOfExperience} years experience
                   </div>
                 </div>
+
+                {/* Insurance badge */}
+                {doctor.acceptsInsurance && (
+                  <div className="flex items-center gap-2 mt-3">
+                    <Shield size={16} className="text-green-600" />
+                    <span className="text-sm text-green-600 font-medium">Accepts Health Insurance</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -237,42 +284,47 @@ export default function DoctorProfilePage({
           {/* About */}
           <div className="bg-card rounded-xl p-6 border border-border">
             <h2 className="text-lg font-semibold text-foreground mb-3">About</h2>
-            <p className="text-muted-foreground">{doctor.bio}</p>
+            <p className="text-muted-foreground">{doctor.bio || "No bio available."}</p>
           </div>
 
           {/* Education & Credentials */}
           <div className="bg-card rounded-xl p-6 border border-border">
             <h2 className="text-lg font-semibold text-foreground mb-4">Education & Credentials</h2>
             <div className="space-y-4">
-              {doctor.education.map((edu, index) => (
-                <div key={index} className="flex items-start gap-3">
-                  <GraduationCap className="w-5 h-5 text-primary mt-0.5" />
+              <div className="flex items-start gap-3">
+                <GraduationCap className="w-5 h-5 text-primary mt-0.5" />
+                <div>
+                  <p className="font-medium text-foreground">Education</p>
+                  <p className="text-sm text-muted-foreground">
+                    {doctor.education || "Education details not provided"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <Award className="w-5 h-5 text-primary mt-0.5" />
+                <div>
+                  <p className="font-medium text-foreground">License Number</p>
+                  <p className="text-sm text-muted-foreground">{doctor.licenseNumber}</p>
+                </div>
+              </div>
+              {doctor.contactNumber && (
+                <div className="flex items-start gap-3">
+                  <Phone className="w-5 h-5 text-primary mt-0.5" />
                   <div>
-                    <p className="font-medium text-foreground">{edu.degree}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {edu.institution}, {edu.year}
-                    </p>
+                    <p className="font-medium text-foreground">Contact</p>
+                    <p className="text-sm text-muted-foreground">{doctor.contactNumber}</p>
                   </div>
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
-          {/* Languages & Specializations */}
+          {/* Languages */}
           <div className="bg-card rounded-xl p-6 border border-border">
-            <h2 className="text-lg font-semibold text-foreground mb-4">Specializations</h2>
-            <div className="flex flex-wrap gap-2">
-              {doctor.specializations.map((spec, index) => (
-                <span
-                  key={index}
-                  className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm"
-                >
-                  {spec}
-                </span>
-              ))}
-            </div>
-
-            <h2 className="text-lg font-semibold text-foreground mb-4 mt-6">Languages</h2>
+            <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+              <Languages size={20} />
+              Languages Spoken
+            </h2>
             <div className="flex flex-wrap gap-2">
               {doctor.languages.map((lang, index) => (
                 <span
@@ -284,6 +336,37 @@ export default function DoctorProfilePage({
               ))}
             </div>
           </div>
+
+          {/* Reviews */}
+          {doctor.reviews && doctor.reviews.length > 0 && (
+            <div className="bg-card rounded-xl p-6 border border-border">
+              <h2 className="text-lg font-semibold text-foreground mb-4">Patient Reviews</h2>
+              <div className="space-y-4">
+                {doctor.reviews.slice(0, 5).map((review, index) => (
+                  <div key={index} className="border-b border-border last:border-0 pb-4 last:pb-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star 
+                            key={star} 
+                            size={14} 
+                            className={star <= review.rating ? "fill-yellow-400 text-yellow-400" : "text-muted"}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(review.date).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{review.comment}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      - {review.isAnonymous ? "Anonymous Patient" : "Verified Patient"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Booking Card */}
@@ -340,6 +423,7 @@ export default function DoctorProfilePage({
                   >
                     <div className="text-xs">{day.dayName}</div>
                     <div className="font-semibold">{day.dayNum}</div>
+                    {day.isToday && <div className="text-[10px]">Today</div>}
                   </button>
                 ))}
               </div>
@@ -369,6 +453,36 @@ export default function DoctorProfilePage({
               </div>
             )}
 
+            {/* Payment Method */}
+            {selectedTime && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Payment Method
+                </label>
+                <div className="space-y-2">
+                  {availablePaymentMethods.map((method) => (
+                    <button
+                      key={method.id}
+                      onClick={() => setPaymentMethod(method.id)}
+                      className={`w-full p-3 rounded-lg border text-left flex items-center gap-3 transition-colors ${
+                        paymentMethod === method.id
+                          ? "bg-primary/10 border-primary"
+                          : "bg-background border-border hover:bg-muted"
+                      }`}
+                    >
+                      <method.icon size={20} className={paymentMethod === method.id ? "text-primary" : "text-muted-foreground"} />
+                      <div>
+                        <p className={`text-sm font-medium ${paymentMethod === method.id ? "text-primary" : "text-foreground"}`}>
+                          {method.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{method.description}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Reason for Visit */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-foreground mb-2">
@@ -386,18 +500,24 @@ export default function DoctorProfilePage({
             <div className="flex items-center justify-between py-3 border-t border-border mb-4">
               <span className="text-muted-foreground">Consultation Fee</span>
               <span className="text-xl font-bold text-foreground">
-                ${doctor.consultationFee}
+                ₱{doctor.consultationFee.toLocaleString()}
               </span>
             </div>
 
             {/* Book Button */}
             <Button
               onClick={handleBookAppointment}
-              disabled={!selectedDate || !selectedTime || isBooking}
+              disabled={!selectedDate || !selectedTime || !paymentMethod || isBooking}
               className="w-full"
             >
               {isBooking ? "Booking..." : "Confirm Booking"}
             </Button>
+            
+            {!paymentMethod && selectedTime && (
+              <p className="text-xs text-muted-foreground text-center mt-2">
+                Please select a payment method
+              </p>
+            )}
           </div>
         </div>
       </div>

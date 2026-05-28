@@ -9,7 +9,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   User, 
   Mail, 
@@ -19,44 +19,95 @@ import {
   Award,
   Save,
   CheckCircle,
-  Camera
+  Camera,
+  Upload
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 /**
  * Doctor Profile Page Component
  */
 export default function DoctorProfilePage() {
-  const { user, updateDoctorProfile } = useAuth();
+  const { user, doctorProfile, updateDoctorProfile } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [savedMessage, setSavedMessage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Form state
+  // Form state - initialize from doctorProfile
   const [formData, setFormData] = useState({
-    firstName: (user as any)?.firstName || "",
-    lastName: (user as any)?.lastName || "",
-    email: user?.email || "",
-    phone: (user as any)?.phone || "",
-    specialization: (user as any)?.specialization || "",
-    department: (user as any)?.department || "",
-    licenseNumber: (user as any)?.licenseNumber || "",
-    yearsOfExperience: (user as any)?.yearsOfExperience || 0,
-    education: (user as any)?.education || "",
-    bio: (user as any)?.bio || "",
-    consultationFee: (user as any)?.consultationFee || 100,
-    languages: (user as any)?.languages?.join(", ") || "English",
-    address: (user as any)?.address || "",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    specialization: "",
+    department: "",
+    licenseNumber: "",
+    yearsOfExperience: 0,
+    education: "",
+    bio: "",
+    consultationFee: 500,
+    languages: "English, Filipino",
+    location: "Metro Manila",
+    acceptsInsurance: true,
   });
+
+  // Load profile data on mount and when doctorProfile changes
+  useEffect(() => {
+    if (doctorProfile) {
+      setFormData({
+        firstName: doctorProfile.firstName || "",
+        lastName: doctorProfile.lastName || "",
+        email: doctorProfile.email || user?.email || "",
+        phone: doctorProfile.phone || "",
+        specialization: doctorProfile.specialization || "",
+        department: doctorProfile.department || "",
+        licenseNumber: doctorProfile.licenseNumber || "",
+        yearsOfExperience: doctorProfile.yearsOfExperience || 0,
+        education: doctorProfile.education || "",
+        bio: doctorProfile.bio || "",
+        consultationFee: doctorProfile.consultationFee || 500,
+        languages: doctorProfile.languages?.join(", ") || "English, Filipino",
+        location: doctorProfile.location || "Metro Manila",
+        acceptsInsurance: doctorProfile.acceptsInsurance ?? true,
+      });
+    }
+  }, [doctorProfile, user]);
 
   /**
    * Handle input changes
    */
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const { name, value, type } = e.target;
+    setFormData(prev => ({ 
+      ...prev, 
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value 
+    }));
+  };
+
+  /**
+   * Handle profile picture upload
+   */
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        // Save avatar to profile
+        if (updateDoctorProfile) {
+          updateDoctorProfile({ avatar: base64String });
+          toast.success('Profile picture updated!');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   /**
@@ -72,29 +123,57 @@ export default function DoctorProfilePage() {
     // Update user profile
     if (updateDoctorProfile) {
       updateDoctorProfile({
-        ...formData,
-        languages: formData.languages.split(",").map(l => l.trim()),
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: formData.phone,
+        specialization: formData.specialization,
+        department: formData.department as any,
+        licenseNumber: formData.licenseNumber,
         yearsOfExperience: Number(formData.yearsOfExperience),
+        education: formData.education,
+        bio: formData.bio,
         consultationFee: Number(formData.consultationFee),
+        languages: formData.languages.split(",").map(l => l.trim()),
+        location: formData.location,
+        acceptsInsurance: formData.acceptsInsurance,
       });
     }
 
     setIsSaving(false);
     setSavedMessage(true);
+    toast.success('Profile saved successfully!');
     setTimeout(() => setSavedMessage(false), 3000);
   };
 
   const departments = [
-    "Cardiology",
-    "Dermatology",
-    "Pediatrics",
-    "Neurology",
-    "Orthopedics",
-    "Gynecology",
-    "Ophthalmology",
-    "Psychiatry",
-    "General Medicine",
-    "ENT",
+    { id: "cardiology", name: "Cardiology" },
+    { id: "dermatology", name: "Dermatology" },
+    { id: "pediatrics", name: "Pediatrics" },
+    { id: "neurology", name: "Neurology" },
+    { id: "orthopedics", name: "Orthopedics" },
+    { id: "gynecology", name: "Gynecology" },
+    { id: "ophthalmology", name: "Ophthalmology" },
+    { id: "psychiatry", name: "Psychiatry" },
+    { id: "general-medicine", name: "General Medicine" },
+    { id: "ent", name: "ENT" },
+  ];
+
+  const metroManilaLocations = [
+    "Makati City",
+    "Quezon City",
+    "Manila",
+    "Taguig City",
+    "Pasig City",
+    "Mandaluyong City",
+    "San Juan City",
+    "Parañaque City",
+    "Pasay City",
+    "Muntinlupa City",
+    "Las Piñas City",
+    "Marikina City",
+    "Caloocan City",
+    "Valenzuela City",
   ];
 
   return (
@@ -134,9 +213,9 @@ export default function DoctorProfilePage() {
           <div className="flex items-center gap-6">
             <div className="relative">
               <div className="w-24 h-24 rounded-full bg-accent overflow-hidden flex items-center justify-center">
-                {(user as any)?.avatar ? (
+                {doctorProfile?.avatar ? (
                   <img 
-                    src={(user as any).avatar} 
+                    src={doctorProfile.avatar} 
                     alt="Profile"
                     className="w-full h-full object-cover"
                   />
@@ -146,17 +225,33 @@ export default function DoctorProfilePage() {
               </div>
               <button
                 type="button"
+                onClick={handleAvatarClick}
                 className="absolute bottom-0 right-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors"
                 aria-label="Change profile picture"
               >
                 <Camera size={16} />
               </button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept="image/*"
+                className="hidden"
+              />
             </div>
             <div>
               <p className="font-medium text-foreground">
                 Dr. {formData.firstName} {formData.lastName}
               </p>
               <p className="text-sm text-muted-foreground">{formData.specialization}</p>
+              <button
+                type="button"
+                onClick={handleAvatarClick}
+                className="flex items-center gap-2 mt-2 text-sm text-primary hover:underline"
+              >
+                <Upload size={14} />
+                Upload new picture
+              </button>
               <p className="text-xs text-muted-foreground mt-1">
                 Recommended: Square image, at least 200x200 pixels
               </p>
@@ -229,24 +324,30 @@ export default function DoctorProfilePage() {
                   value={formData.phone}
                   onChange={handleChange}
                   className="pl-10"
-                  placeholder="Enter phone number"
+                  placeholder="+63 9XX XXX XXXX"
                 />
               </div>
             </div>
 
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-foreground mb-1">
-                Address
+                Location
               </label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-                <Input
-                  name="address"
-                  value={formData.address}
+                <select
+                  name="location"
+                  value={formData.location}
                   onChange={handleChange}
-                  className="pl-10"
-                  placeholder="Enter address"
-                />
+                  className="w-full pl-10 pr-4 py-2 rounded-lg border border-border bg-background text-foreground"
+                >
+                  <option value="">Select Location</option>
+                  {metroManilaLocations.map(loc => (
+                    <option key={loc} value={loc}>
+                      {loc}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
@@ -268,8 +369,8 @@ export default function DoctorProfilePage() {
               >
                 <option value="">Select Department</option>
                 {departments.map(dept => (
-                  <option key={dept} value={dept.toLowerCase().replace(" ", "-")}>
-                    {dept}
+                  <option key={dept.id} value={dept.id}>
+                    {dept.name}
                   </option>
                 ))}
               </select>
@@ -293,7 +394,7 @@ export default function DoctorProfilePage() {
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">
-                License Number
+                License Number (PRC)
               </label>
               <div className="relative">
                 <Award className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
@@ -302,7 +403,7 @@ export default function DoctorProfilePage() {
                   value={formData.licenseNumber}
                   onChange={handleChange}
                   className="pl-10"
-                  placeholder="Enter license number"
+                  placeholder="e.g., PRC-0123456"
                 />
               </div>
             </div>
@@ -323,16 +424,22 @@ export default function DoctorProfilePage() {
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">
-                Consultation Fee ($)
+                Consultation Fee (PHP)
               </label>
-              <Input
-                name="consultationFee"
-                type="number"
-                min="0"
-                value={formData.consultationFee}
-                onChange={handleChange}
-                placeholder="Enter fee"
-              />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">
+                  ₱
+                </span>
+                <Input
+                  name="consultationFee"
+                  type="number"
+                  min="0"
+                  value={formData.consultationFee}
+                  onChange={handleChange}
+                  placeholder="Enter fee in Pesos"
+                  className="pl-8"
+                />
+              </div>
             </div>
 
             <div>
@@ -343,7 +450,7 @@ export default function DoctorProfilePage() {
                 name="languages"
                 value={formData.languages}
                 onChange={handleChange}
-                placeholder="e.g., English, Spanish"
+                placeholder="e.g., English, Filipino, Mandarin"
               />
             </div>
 
@@ -355,7 +462,7 @@ export default function DoctorProfilePage() {
                 name="education"
                 value={formData.education}
                 onChange={handleChange}
-                placeholder="e.g., MD from Johns Hopkins University"
+                placeholder="e.g., MD from UP Manila, Fellowship at Philippine Heart Center"
               />
             </div>
 
@@ -371,6 +478,20 @@ export default function DoctorProfilePage() {
                 className="w-full px-4 py-2 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground resize-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="Write a brief professional bio..."
               />
+            </div>
+
+            <div className="md:col-span-2 flex items-center gap-3">
+              <input
+                type="checkbox"
+                name="acceptsInsurance"
+                id="acceptsInsurance"
+                checked={formData.acceptsInsurance}
+                onChange={handleChange}
+                className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+              />
+              <label htmlFor="acceptsInsurance" className="text-sm font-medium text-foreground">
+                I accept health insurance
+              </label>
             </div>
           </div>
         </div>

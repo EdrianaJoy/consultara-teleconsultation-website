@@ -33,10 +33,13 @@ export interface PatientProfile {
   zipCode: string;
   emergencyContact: string;
   emergencyPhone: string;
+  weight?: string;
+  height?: string;
   bloodType?: string;
   allergies?: string[];
   medicalConditions?: string[];
   currentMedications?: string[];
+  basicMedicalHistory?: string;
   avatar?: string;
   createdAt: string;
   updatedAt: string;

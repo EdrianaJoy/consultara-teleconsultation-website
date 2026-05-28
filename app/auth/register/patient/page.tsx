@@ -2,7 +2,7 @@
  * ConsulTara TeleConsultation Platform - Patient Registration Page
  * 
  * Collects necessary patient profile information after role selection.
- * Includes personal details, emergency contact, and medical history.
+ * Includes personal details, emergency contact, weight, height, and medical history.
  */
 
 'use client';
@@ -10,7 +10,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { ArrowLeft, ArrowRight, User, Phone, MapPin, Heart } from 'lucide-react';
+import { ArrowLeft, ArrowRight, User, Phone, MapPin, Heart, Scale, Ruler } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,7 +20,7 @@ import { useAuth } from '@/lib/auth-context';
 import { toast } from 'sonner';
 import type { PatientProfile } from '@/lib/types';
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2 | 3 | 4;
 
 export default function PatientRegistrationPage() {
   const router = useRouter();
@@ -41,10 +41,13 @@ export default function PatientRegistrationPage() {
     zipCode: '',
     emergencyContact: '',
     emergencyPhone: '',
+    weight: '',
+    height: '',
     bloodType: '',
     allergies: [],
     medicalConditions: [],
     currentMedications: [],
+    basicMedicalHistory: '',
   });
 
   const [allergiesText, setAllergiesText] = useState('');
@@ -62,6 +65,11 @@ export default function PatientRegistrationPage() {
         return;
       }
     } else if (currentStep === 2) {
+      if (!formData.weight || !formData.height) {
+        toast.error('Please fill in weight and height');
+        return;
+      }
+    } else if (currentStep === 3) {
       if (!formData.address || !formData.city || !formData.state || !formData.emergencyContact || !formData.emergencyPhone) {
         toast.error('Please fill in all required fields');
         return;
@@ -98,8 +106,9 @@ export default function PatientRegistrationPage() {
 
   const steps = [
     { number: 1, title: 'Personal Info', icon: User },
-    { number: 2, title: 'Contact & Address', icon: MapPin },
-    { number: 3, title: 'Medical History', icon: Heart },
+    { number: 2, title: 'Body Metrics', icon: Scale },
+    { number: 3, title: 'Contact & Address', icon: MapPin },
+    { number: 4, title: 'Medical History', icon: Heart },
   ];
 
   return (
@@ -133,7 +142,7 @@ export default function PatientRegistrationPage() {
                 <span className="hidden sm:block text-sm font-medium">{step.title}</span>
               </div>
               {index < steps.length - 1 && (
-                <div className={`w-12 sm:w-20 h-0.5 mx-2 ${currentStep > step.number ? 'bg-[#769382]' : 'bg-[#C0C3B9]'}`} />
+                <div className={`w-8 sm:w-12 h-0.5 mx-2 ${currentStep > step.number ? 'bg-[#769382]' : 'bg-[#C0C3B9]'}`} />
               )}
             </div>
           ))}
@@ -180,7 +189,7 @@ export default function PatientRegistrationPage() {
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => updateFormData('phone', e.target.value)}
-                    placeholder="+1 (555) 000-0000"
+                    placeholder="+63 9XX XXX XXXX"
                     className="h-11 border-[#C0C3B9] focus:border-[#769382]"
                   />
                 </div>
@@ -216,8 +225,82 @@ export default function PatientRegistrationPage() {
             </div>
           )}
 
-          {/* Step 2: Contact & Address */}
+          {/* Step 2: Body Metrics (Weight & Height) */}
           {currentStep === 2 && (
+            <div className="space-y-6">
+              <div className="text-center mb-6">
+                <h2 className="text-xl font-semibold text-[#2D3B35]">Body Metrics</h2>
+                <p className="text-sm text-[#2D3B35]/70">This helps doctors provide better care</p>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="weight" className="text-[#2D3B35] flex items-center gap-2">
+                    <Scale className="w-4 h-4" />
+                    Weight (kg) *
+                  </Label>
+                  <Input
+                    id="weight"
+                    type="number"
+                    min="1"
+                    max="500"
+                    value={formData.weight}
+                    onChange={(e) => updateFormData('weight', e.target.value)}
+                    placeholder="e.g., 65"
+                    className="h-11 border-[#C0C3B9] focus:border-[#769382]"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="height" className="text-[#2D3B35] flex items-center gap-2">
+                    <Ruler className="w-4 h-4" />
+                    Height (cm) *
+                  </Label>
+                  <Input
+                    id="height"
+                    type="number"
+                    min="50"
+                    max="300"
+                    value={formData.height}
+                    onChange={(e) => updateFormData('height', e.target.value)}
+                    placeholder="e.g., 170"
+                    className="h-11 border-[#C0C3B9] focus:border-[#769382]"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="bloodType" className="text-[#2D3B35]">Blood Type</Label>
+                <Select
+                  value={formData.bloodType || ''}
+                  onValueChange={(value) => updateFormData('bloodType', value)}
+                >
+                  <SelectTrigger className="h-11 border-[#C0C3B9] focus:border-[#769382]">
+                    <SelectValue placeholder="Select blood type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="A+">A+</SelectItem>
+                    <SelectItem value="A-">A-</SelectItem>
+                    <SelectItem value="B+">B+</SelectItem>
+                    <SelectItem value="B-">B-</SelectItem>
+                    <SelectItem value="AB+">AB+</SelectItem>
+                    <SelectItem value="AB-">AB-</SelectItem>
+                    <SelectItem value="O+">O+</SelectItem>
+                    <SelectItem value="O-">O-</SelectItem>
+                    <SelectItem value="unknown">Unknown</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="bg-[#FFEBBC]/30 rounded-lg p-4">
+                <p className="text-sm text-[#2D3B35]/70">
+                  Your weight and height help calculate your BMI and assist doctors in prescribing appropriate medication dosages.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Contact & Address */}
+          {currentStep === 3 && (
             <div className="space-y-6">
               <div className="text-center mb-6">
                 <h2 className="text-xl font-semibold text-[#2D3B35]">Contact & Address</h2>
@@ -230,7 +313,7 @@ export default function PatientRegistrationPage() {
                   id="address"
                   value={formData.address}
                   onChange={(e) => updateFormData('address', e.target.value)}
-                  placeholder="123 Main Street"
+                  placeholder="123 Main Street, Barangay"
                   className="h-11 border-[#C0C3B9] focus:border-[#769382]"
                 />
               </div>
@@ -238,21 +321,38 @@ export default function PatientRegistrationPage() {
               <div className="grid sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="city" className="text-[#2D3B35]">City *</Label>
-                  <Input
-                    id="city"
+                  <Select
                     value={formData.city}
-                    onChange={(e) => updateFormData('city', e.target.value)}
-                    placeholder="City"
-                    className="h-11 border-[#C0C3B9] focus:border-[#769382]"
-                  />
+                    onValueChange={(value) => updateFormData('city', value)}
+                  >
+                    <SelectTrigger className="h-11 border-[#C0C3B9] focus:border-[#769382]">
+                      <SelectValue placeholder="Select city" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Makati City">Makati City</SelectItem>
+                      <SelectItem value="Quezon City">Quezon City</SelectItem>
+                      <SelectItem value="Manila">Manila</SelectItem>
+                      <SelectItem value="Taguig City">Taguig City</SelectItem>
+                      <SelectItem value="Pasig City">Pasig City</SelectItem>
+                      <SelectItem value="Mandaluyong City">Mandaluyong City</SelectItem>
+                      <SelectItem value="San Juan City">San Juan City</SelectItem>
+                      <SelectItem value="Parañaque City">Parañaque City</SelectItem>
+                      <SelectItem value="Pasay City">Pasay City</SelectItem>
+                      <SelectItem value="Muntinlupa City">Muntinlupa City</SelectItem>
+                      <SelectItem value="Las Piñas City">Las Piñas City</SelectItem>
+                      <SelectItem value="Marikina City">Marikina City</SelectItem>
+                      <SelectItem value="Caloocan City">Caloocan City</SelectItem>
+                      <SelectItem value="Valenzuela City">Valenzuela City</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="state" className="text-[#2D3B35]">State *</Label>
+                  <Label htmlFor="state" className="text-[#2D3B35]">Province/Region *</Label>
                   <Input
                     id="state"
                     value={formData.state}
                     onChange={(e) => updateFormData('state', e.target.value)}
-                    placeholder="State"
+                    placeholder="Metro Manila"
                     className="h-11 border-[#C0C3B9] focus:border-[#769382]"
                   />
                 </div>
@@ -262,7 +362,7 @@ export default function PatientRegistrationPage() {
                     id="zipCode"
                     value={formData.zipCode}
                     onChange={(e) => updateFormData('zipCode', e.target.value)}
-                    placeholder="12345"
+                    placeholder="1200"
                     className="h-11 border-[#C0C3B9] focus:border-[#769382]"
                   />
                 </div>
@@ -291,7 +391,7 @@ export default function PatientRegistrationPage() {
                       type="tel"
                       value={formData.emergencyPhone}
                       onChange={(e) => updateFormData('emergencyPhone', e.target.value)}
-                      placeholder="+1 (555) 000-0000"
+                      placeholder="+63 9XX XXX XXXX"
                       className="h-11 border-[#C0C3B9] focus:border-[#769382]"
                     />
                   </div>
@@ -300,35 +400,23 @@ export default function PatientRegistrationPage() {
             </div>
           )}
 
-          {/* Step 3: Medical History */}
-          {currentStep === 3 && (
+          {/* Step 4: Medical History */}
+          {currentStep === 4 && (
             <div className="space-y-6">
               <div className="text-center mb-6">
                 <h2 className="text-xl font-semibold text-[#2D3B35]">Medical History</h2>
-                <p className="text-sm text-[#2D3B35]/70">Help us understand your health better (optional)</p>
+                <p className="text-sm text-[#2D3B35]/70">Help us understand your health better</p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="bloodType" className="text-[#2D3B35]">Blood Type</Label>
-                <Select
-                  value={formData.bloodType || ''}
-                  onValueChange={(value) => updateFormData('bloodType', value)}
-                >
-                  <SelectTrigger className="h-11 border-[#C0C3B9] focus:border-[#769382]">
-                    <SelectValue placeholder="Select blood type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="A+">A+</SelectItem>
-                    <SelectItem value="A-">A-</SelectItem>
-                    <SelectItem value="B+">B+</SelectItem>
-                    <SelectItem value="B-">B-</SelectItem>
-                    <SelectItem value="AB+">AB+</SelectItem>
-                    <SelectItem value="AB-">AB-</SelectItem>
-                    <SelectItem value="O+">O+</SelectItem>
-                    <SelectItem value="O-">O-</SelectItem>
-                    <SelectItem value="unknown">Unknown</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="basicMedicalHistory" className="text-[#2D3B35]">Basic Medical History *</Label>
+                <Textarea
+                  id="basicMedicalHistory"
+                  value={formData.basicMedicalHistory}
+                  onChange={(e) => updateFormData('basicMedicalHistory', e.target.value)}
+                  placeholder="Please describe any past surgeries, hospitalizations, chronic conditions, or significant medical events..."
+                  className="min-h-28 border-[#C0C3B9] focus:border-[#769382] resize-none"
+                />
               </div>
 
               <div className="space-y-2">
@@ -337,18 +425,18 @@ export default function PatientRegistrationPage() {
                   id="allergies"
                   value={allergiesText}
                   onChange={(e) => setAllergiesText(e.target.value)}
-                  placeholder="List any allergies, separated by commas (e.g., Penicillin, Peanuts)"
+                  placeholder="List any allergies, separated by commas (e.g., Penicillin, Peanuts, Shellfish)"
                   className="min-h-20 border-[#C0C3B9] focus:border-[#769382] resize-none"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="conditions" className="text-[#2D3B35]">Medical Conditions</Label>
+                <Label htmlFor="conditions" className="text-[#2D3B35]">Existing Medical Conditions</Label>
                 <Textarea
                   id="conditions"
                   value={conditionsText}
                   onChange={(e) => setConditionsText(e.target.value)}
-                  placeholder="List any existing conditions, separated by commas (e.g., Diabetes, Hypertension)"
+                  placeholder="List any existing conditions, separated by commas (e.g., Diabetes, Hypertension, Asthma)"
                   className="min-h-20 border-[#C0C3B9] focus:border-[#769382] resize-none"
                 />
               </div>
@@ -359,7 +447,7 @@ export default function PatientRegistrationPage() {
                   id="medications"
                   value={medicationsText}
                   onChange={(e) => setMedicationsText(e.target.value)}
-                  placeholder="List current medications, separated by commas"
+                  placeholder="List current medications with dosage, separated by commas (e.g., Metformin 500mg, Lisinopril 10mg)"
                   className="min-h-20 border-[#C0C3B9] focus:border-[#769382] resize-none"
                 />
               </div>
@@ -390,7 +478,7 @@ export default function PatientRegistrationPage() {
               </Button>
             )}
 
-            {currentStep < 3 ? (
+            {currentStep < 4 ? (
               <Button
                 type="button"
                 onClick={handleNext}

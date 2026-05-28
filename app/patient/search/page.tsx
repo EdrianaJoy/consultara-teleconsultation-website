@@ -22,21 +22,32 @@ import {
   Clock, 
   Filter,
   X,
-  Stethoscope
+  Stethoscope,
+  Shield
 } from "lucide-react";
-import { doctors, DEPARTMENTS, LOCATIONS } from "@/lib/data";
-import { Doctor } from "@/lib/types";
+import { doctors, DEPARTMENTS, LOCATIONS, departments } from "@/lib/data";
+import { DoctorProfile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 /**
+ * Get department name from ID
+ */
+function getDeptNameFromId(deptId: string): string {
+  const dept = departments.find(d => d.id === deptId);
+  return dept?.name || deptId;
+}
+
+/**
  * Doctor Card Component
  */
-function DoctorCard({ doctor }: { doctor: Doctor }) {
+function DoctorCard({ doctor }: { doctor: DoctorProfile }) {
+  const fullName = `Dr. ${doctor.firstName} ${doctor.lastName}`;
+  
   return (
     <Link
       href={`/patient/doctors/${doctor.id}`}
-      className="bg-card rounded-xl p-4 hover:shadow-lg transition-shadow border border-border"
+      className="bg-card rounded-xl p-4 hover:shadow-lg transition-shadow border border-border group"
     >
       <div className="flex gap-4">
         {/* Doctor Avatar */}
@@ -44,30 +55,32 @@ function DoctorCard({ doctor }: { doctor: Doctor }) {
           {doctor.avatar ? (
             <img 
               src={doctor.avatar} 
-              alt={doctor.name}
+              alt={fullName}
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-              <Stethoscope size={32} />
+            <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xl font-bold">
+              {doctor.firstName.charAt(0)}{doctor.lastName.charAt(0)}
             </div>
           )}
         </div>
 
         {/* Doctor Info */}
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-foreground truncate">{doctor.name}</h3>
-          <p className="text-sm text-primary">{doctor.specialty}</p>
+          <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+            {fullName}
+          </h3>
+          <p className="text-sm text-primary font-medium">{doctor.specialization}</p>
           <div className="flex items-center gap-1 mt-1">
             <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-            <span className="text-sm text-foreground">{doctor.rating}</span>
+            <span className="text-sm font-medium text-foreground">{doctor.rating.toFixed(1)}</span>
             <span className="text-sm text-muted-foreground">
-              ({doctor.reviewCount} reviews)
+              ({doctor.totalReviews} reviews)
             </span>
           </div>
           <div className="flex items-center gap-1 mt-1 text-sm text-muted-foreground">
             <MapPin size={14} />
-            <span className="truncate">{doctor.location}</span>
+            <span className="truncate">{doctor.location || 'Metro Manila'}</span>
           </div>
         </div>
       </div>
@@ -75,14 +88,20 @@ function DoctorCard({ doctor }: { doctor: Doctor }) {
       {/* Quick Info */}
       <div className="mt-4 flex flex-wrap gap-2">
         <span className="px-2 py-1 bg-muted rounded-full text-xs text-muted-foreground">
-          {doctor.experience} years exp.
+          {doctor.yearsOfExperience} years exp.
         </span>
-        <span className="px-2 py-1 bg-muted rounded-full text-xs text-muted-foreground">
-          ${doctor.consultationFee} consultation
+        <span className="px-2 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">
+          ₱{doctor.consultationFee.toLocaleString()}
         </span>
-        {doctor.isAvailableToday && (
+        {doctor.acceptsInsurance && (
+          <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs flex items-center gap-1">
+            <Shield size={12} />
+            Insurance
+          </span>
+        )}
+        {doctor.isAvailable && (
           <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
-            Available Today
+            Available
           </span>
         )}
       </div>
@@ -102,7 +121,7 @@ function SearchContent() {
   const [selectedLocation, setSelectedLocation] = useState(searchParams.get("location") || "");
   const [selectedSpecialty, setSelectedSpecialty] = useState(searchParams.get("specialty") || "");
   const [showFilters, setShowFilters] = useState(false);
-  const [filteredDoctors, setFilteredDoctors] = useState<Doctor[]>(doctors);
+  const [filteredDoctors, setFilteredDoctors] = useState<DoctorProfile[]>(doctors);
 
   // Apply filters
   useEffect(() => {
@@ -111,10 +130,12 @@ function SearchContent() {
     // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        d => d.name.toLowerCase().includes(query) || 
-             d.specialty.toLowerCase().includes(query)
-      );
+      filtered = filtered.filter(d => {
+        const fullName = `${d.firstName} ${d.lastName}`.toLowerCase();
+        return fullName.includes(query) || 
+               d.specialization.toLowerCase().includes(query) ||
+               (d.location?.toLowerCase().includes(query));
+      });
     }
 
     // Filter by location
@@ -122,9 +143,12 @@ function SearchContent() {
       filtered = filtered.filter(d => d.location === selectedLocation);
     }
 
-    // Filter by specialty
+    // Filter by specialty/department
     if (selectedSpecialty) {
-      filtered = filtered.filter(d => d.specialty === selectedSpecialty);
+      filtered = filtered.filter(d => {
+        const deptName = getDeptNameFromId(d.department);
+        return deptName === selectedSpecialty || d.specialization.includes(selectedSpecialty);
+      });
     }
 
     setFilteredDoctors(filtered);
@@ -151,7 +175,7 @@ function SearchContent() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
           <Input
             type="text"
-            placeholder="Search by doctor name or specialty..."
+            placeholder="Search by doctor name, specialty, or location..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -210,6 +234,8 @@ function SearchContent() {
       <div className="flex items-center justify-between">
         <p className="text-muted-foreground">
           {filteredDoctors.length} doctor{filteredDoctors.length !== 1 ? "s" : ""} found
+          {selectedSpecialty && ` in ${selectedSpecialty}`}
+          {selectedLocation && ` in ${selectedLocation}`}
         </p>
       </div>
 

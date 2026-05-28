@@ -10,7 +10,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { ArrowLeft, ArrowRight, User, Briefcase, Clock } from 'lucide-react';
+import { ArrowLeft, ArrowRight, User, Briefcase, Clock, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,7 +22,24 @@ import { toast } from 'sonner';
 import type { DoctorProfile, Department, WeeklySchedule } from '@/lib/types';
 import { departments } from '@/lib/data';
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2 | 3 | 4;
+
+const metroManilaLocations = [
+  'Makati City',
+  'Quezon City',
+  'Manila',
+  'Taguig City',
+  'Pasig City',
+  'Mandaluyong City',
+  'San Juan City',
+  'Parañaque City',
+  'Pasay City',
+  'Muntinlupa City',
+  'Las Piñas City',
+  'Marikina City',
+  'Caloocan City',
+  'Valenzuela City',
+];
 
 const defaultSchedule: WeeklySchedule = {
   monday: { isWorkingDay: true, slots: [{ startTime: '09:00', endTime: '17:00', isAvailable: true }] },
@@ -51,13 +68,15 @@ export default function DoctorRegistrationPage() {
     yearsOfExperience: 0,
     education: '',
     bio: '',
-    consultationFee: 100,
-    languages: ['English'],
+    consultationFee: 500,
+    languages: ['English', 'Filipino'],
     availability: defaultSchedule,
     isAvailable: true,
+    location: 'Makati City',
+    acceptsInsurance: true,
   });
 
-  const [languagesText, setLanguagesText] = useState('English');
+  const [languagesText, setLanguagesText] = useState('English, Filipino');
   const [workingDays, setWorkingDays] = useState({
     monday: true,
     tuesday: true,
@@ -66,6 +85,15 @@ export default function DoctorRegistrationPage() {
     friday: true,
     saturday: false,
     sunday: false,
+  });
+  const [timeSlots, setTimeSlots] = useState({
+    monday: { start: '09:00', end: '17:00' },
+    tuesday: { start: '09:00', end: '17:00' },
+    wednesday: { start: '09:00', end: '17:00' },
+    thursday: { start: '09:00', end: '17:00' },
+    friday: { start: '09:00', end: '17:00' },
+    saturday: { start: '09:00', end: '13:00' },
+    sunday: { start: '09:00', end: '13:00' },
   });
 
   const updateFormData = (field: keyof DoctorProfile, value: unknown) => {
@@ -83,6 +111,11 @@ export default function DoctorRegistrationPage() {
         toast.error('Please fill in all required fields');
         return;
       }
+    } else if (currentStep === 3) {
+      if (!formData.location) {
+        toast.error('Please select your location');
+        return;
+      }
     }
     setCurrentStep((prev) => (prev + 1) as Step);
   };
@@ -95,35 +128,35 @@ export default function DoctorRegistrationPage() {
     setIsLoading(true);
 
     try {
-      // Build availability schedule based on working days
+      // Build availability schedule based on working days and time slots
       const availability: WeeklySchedule = {
         monday: { 
           isWorkingDay: workingDays.monday, 
-          slots: workingDays.monday ? [{ startTime: '09:00', endTime: '17:00', isAvailable: true }] : [] 
+          slots: workingDays.monday ? [{ startTime: timeSlots.monday.start, endTime: timeSlots.monday.end, isAvailable: true }] : [] 
         },
         tuesday: { 
           isWorkingDay: workingDays.tuesday, 
-          slots: workingDays.tuesday ? [{ startTime: '09:00', endTime: '17:00', isAvailable: true }] : [] 
+          slots: workingDays.tuesday ? [{ startTime: timeSlots.tuesday.start, endTime: timeSlots.tuesday.end, isAvailable: true }] : [] 
         },
         wednesday: { 
           isWorkingDay: workingDays.wednesday, 
-          slots: workingDays.wednesday ? [{ startTime: '09:00', endTime: '17:00', isAvailable: true }] : [] 
+          slots: workingDays.wednesday ? [{ startTime: timeSlots.wednesday.start, endTime: timeSlots.wednesday.end, isAvailable: true }] : [] 
         },
         thursday: { 
           isWorkingDay: workingDays.thursday, 
-          slots: workingDays.thursday ? [{ startTime: '09:00', endTime: '17:00', isAvailable: true }] : [] 
+          slots: workingDays.thursday ? [{ startTime: timeSlots.thursday.start, endTime: timeSlots.thursday.end, isAvailable: true }] : [] 
         },
         friday: { 
           isWorkingDay: workingDays.friday, 
-          slots: workingDays.friday ? [{ startTime: '09:00', endTime: '17:00', isAvailable: true }] : [] 
+          slots: workingDays.friday ? [{ startTime: timeSlots.friday.start, endTime: timeSlots.friday.end, isAvailable: true }] : [] 
         },
         saturday: { 
           isWorkingDay: workingDays.saturday, 
-          slots: workingDays.saturday ? [{ startTime: '09:00', endTime: '13:00', isAvailable: true }] : [] 
+          slots: workingDays.saturday ? [{ startTime: timeSlots.saturday.start, endTime: timeSlots.saturday.end, isAvailable: true }] : [] 
         },
         sunday: { 
           isWorkingDay: workingDays.sunday, 
-          slots: workingDays.sunday ? [{ startTime: '09:00', endTime: '13:00', isAvailable: true }] : [] 
+          slots: workingDays.sunday ? [{ startTime: timeSlots.sunday.start, endTime: timeSlots.sunday.end, isAvailable: true }] : [] 
         },
       };
 
@@ -149,7 +182,8 @@ export default function DoctorRegistrationPage() {
   const steps = [
     { number: 1, title: 'Personal Info', icon: User },
     { number: 2, title: 'Professional', icon: Briefcase },
-    { number: 3, title: 'Availability', icon: Clock },
+    { number: 3, title: 'Location', icon: MapPin },
+    { number: 4, title: 'Availability', icon: Clock },
   ];
 
   return (
@@ -183,7 +217,7 @@ export default function DoctorRegistrationPage() {
                 <span className="hidden sm:block text-sm font-medium">{step.title}</span>
               </div>
               {index < steps.length - 1 && (
-                <div className={`w-12 sm:w-20 h-0.5 mx-2 ${currentStep > step.number ? 'bg-[#769382]' : 'bg-[#C0C3B9]'}`} />
+                <div className={`w-8 sm:w-12 h-0.5 mx-2 ${currentStep > step.number ? 'bg-[#769382]' : 'bg-[#C0C3B9]'}`} />
               )}
             </div>
           ))}
@@ -229,7 +263,7 @@ export default function DoctorRegistrationPage() {
                   type="tel"
                   value={formData.phone}
                   onChange={(e) => updateFormData('phone', e.target.value)}
-                  placeholder="+1 (555) 000-0000"
+                  placeholder="+63 9XX XXX XXXX"
                   className="h-11 border-[#C0C3B9] focus:border-[#769382]"
                 />
               </div>
@@ -256,12 +290,12 @@ export default function DoctorRegistrationPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="licenseNumber" className="text-[#2D3B35]">Medical License Number *</Label>
+                <Label htmlFor="licenseNumber" className="text-[#2D3B35]">PRC License Number *</Label>
                 <Input
                   id="licenseNumber"
                   value={formData.licenseNumber}
                   onChange={(e) => updateFormData('licenseNumber', e.target.value)}
-                  placeholder="e.g., MD-123456"
+                  placeholder="e.g., PRC-0123456"
                   className="h-11 border-[#C0C3B9] focus:border-[#769382]"
                 />
               </div>
@@ -310,15 +344,20 @@ export default function DoctorRegistrationPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="fee" className="text-[#2D3B35]">Consultation Fee ($)</Label>
-                  <Input
-                    id="fee"
-                    type="number"
-                    min="0"
-                    value={formData.consultationFee}
-                    onChange={(e) => updateFormData('consultationFee', parseInt(e.target.value) || 0)}
-                    className="h-11 border-[#C0C3B9] focus:border-[#769382]"
-                  />
+                  <Label htmlFor="fee" className="text-[#2D3B35]">Consultation Fee (PHP)</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#2D3B35]/70 font-medium">
+                      ₱
+                    </span>
+                    <Input
+                      id="fee"
+                      type="number"
+                      min="0"
+                      value={formData.consultationFee}
+                      onChange={(e) => updateFormData('consultationFee', parseInt(e.target.value) || 0)}
+                      className="h-11 border-[#C0C3B9] focus:border-[#769382] pl-8"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -328,7 +367,7 @@ export default function DoctorRegistrationPage() {
                   id="education"
                   value={formData.education}
                   onChange={(e) => updateFormData('education', e.target.value)}
-                  placeholder="e.g., MD from Harvard Medical School, Cardiology Fellowship at Mayo Clinic"
+                  placeholder="e.g., MD from UP Manila, Cardiology Fellowship at Philippine Heart Center"
                   className="min-h-20 border-[#C0C3B9] focus:border-[#769382] resize-none"
                 />
               </div>
@@ -339,59 +378,128 @@ export default function DoctorRegistrationPage() {
                   id="languages"
                   value={languagesText}
                   onChange={(e) => setLanguagesText(e.target.value)}
-                  placeholder="English, Spanish, Mandarin (comma-separated)"
+                  placeholder="English, Filipino, Mandarin (comma-separated)"
                   className="h-11 border-[#C0C3B9] focus:border-[#769382]"
                 />
               </div>
             </div>
           )}
 
-          {/* Step 3: Availability */}
+          {/* Step 3: Location */}
           {currentStep === 3 && (
             <div className="space-y-6">
               <div className="text-center mb-6">
-                <h2 className="text-xl font-semibold text-[#2D3B35]">Availability</h2>
-                <p className="text-sm text-[#2D3B35]/70">Set your working days</p>
+                <h2 className="text-xl font-semibold text-[#2D3B35]">Practice Location</h2>
+                <p className="text-sm text-[#2D3B35]/70">Where are you based in Metro Manila?</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="location" className="text-[#2D3B35]">Location *</Label>
+                <Select
+                  value={formData.location}
+                  onValueChange={(value) => updateFormData('location', value)}
+                >
+                  <SelectTrigger className="h-11 border-[#C0C3B9] focus:border-[#769382]">
+                    <SelectValue placeholder="Select your location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {metroManilaLocations.map((loc) => (
+                      <SelectItem key={loc} value={loc}>
+                        {loc}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Checkbox
+                  id="acceptsInsurance"
+                  checked={formData.acceptsInsurance}
+                  onCheckedChange={(checked) => updateFormData('acceptsInsurance', checked)}
+                  className="data-[state=checked]:bg-[#769382] data-[state=checked]:border-[#769382]"
+                />
+                <Label htmlFor="acceptsInsurance" className="text-[#2D3B35] cursor-pointer">
+                  I accept health insurance (HMO, PhilHealth, etc.)
+                </Label>
+              </div>
+
+              <div className="bg-[#FFEBBC]/30 rounded-lg p-4">
+                <h4 className="font-medium text-[#2D3B35] mb-2">About Your Location</h4>
+                <p className="text-sm text-[#2D3B35]/70">
+                  This helps patients find doctors near them. You can also provide teleconsultation services to patients anywhere in Metro Manila.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Availability */}
+          {currentStep === 4 && (
+            <div className="space-y-6">
+              <div className="text-center mb-6">
+                <h2 className="text-xl font-semibold text-[#2D3B35]">Availability Schedule</h2>
+                <p className="text-sm text-[#2D3B35]/70">Set your available days and time slots</p>
               </div>
 
               <div className="space-y-4">
-                <Label className="text-[#2D3B35] font-medium">Working Days</Label>
+                <Label className="text-[#2D3B35] font-medium">Working Days & Hours</Label>
                 <p className="text-sm text-[#2D3B35]/60">
-                  Select the days you&apos;re available for consultations. You can adjust specific time slots later.
+                  Select the days you are available and set your working hours. You can adjust these later in your profile.
                 </p>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="space-y-3">
                   {(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const).map((day) => (
                     <div
                       key={day}
-                      className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-colors ${
+                      className={`p-4 rounded-lg border-2 transition-colors ${
                         workingDays[day]
                           ? 'border-[#769382] bg-[#769382]/10'
                           : 'border-[#C0C3B9] bg-white'
                       }`}
-                      onClick={() => setWorkingDays(prev => ({ ...prev, [day]: !prev[day] }))}
                     >
-                      <Checkbox
-                        checked={workingDays[day]}
-                        onCheckedChange={(checked) => 
-                          setWorkingDays(prev => ({ ...prev, [day]: checked as boolean }))
-                        }
-                        className="data-[state=checked]:bg-[#769382] data-[state=checked]:border-[#769382]"
-                      />
-                      <span className="text-sm font-medium text-[#2D3B35] capitalize">{day}</span>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            checked={workingDays[day]}
+                            onCheckedChange={(checked) => 
+                              setWorkingDays(prev => ({ ...prev, [day]: checked as boolean }))
+                            }
+                            className="data-[state=checked]:bg-[#769382] data-[state=checked]:border-[#769382]"
+                          />
+                          <span className="text-sm font-medium text-[#2D3B35] capitalize">{day}</span>
+                        </div>
+                        {workingDays[day] && (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="time"
+                              value={timeSlots[day].start}
+                              onChange={(e) => setTimeSlots(prev => ({
+                                ...prev,
+                                [day]: { ...prev[day], start: e.target.value }
+                              }))}
+                              className="w-28 h-9 text-sm border-[#C0C3B9]"
+                            />
+                            <span className="text-[#2D3B35]/60">to</span>
+                            <Input
+                              type="time"
+                              value={timeSlots[day].end}
+                              onChange={(e) => setTimeSlots(prev => ({
+                                ...prev,
+                                [day]: { ...prev[day], end: e.target.value }
+                              }))}
+                              className="w-28 h-9 text-sm border-[#C0C3B9]"
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
 
               <div className="bg-[#FFEBBC]/30 rounded-lg p-4">
-                <h4 className="font-medium text-[#2D3B35] mb-2">Default Hours</h4>
                 <p className="text-sm text-[#2D3B35]/70">
-                  Weekdays: 9:00 AM - 5:00 PM<br />
-                  Weekends: 9:00 AM - 1:00 PM (if selected)
-                </p>
-                <p className="text-xs text-[#2D3B35]/50 mt-2">
-                  You can customize specific time slots from your dashboard after registration.
+                  These are your default hours. Patients will be able to book appointments during these times. You can customize specific time slots from your dashboard after registration.
                 </p>
               </div>
             </div>
@@ -421,7 +529,7 @@ export default function DoctorRegistrationPage() {
               </Button>
             )}
 
-            {currentStep < 3 ? (
+            {currentStep < 4 ? (
               <Button
                 type="button"
                 onClick={handleNext}
