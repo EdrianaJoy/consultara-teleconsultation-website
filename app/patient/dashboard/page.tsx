@@ -28,7 +28,8 @@ import {
   Activity,
   Microscope,
   Scissors,
-  Smile
+  Smile,
+  Sparkles
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useAppData } from "@/lib/app-data-context";
@@ -57,7 +58,7 @@ const departmentIcons: Record<string, React.ReactNode> = {
  */
 export default function PatientDashboard() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, patientProfile } = useAuth();
   const { appointments } = useAppData();
   
   // Search filters state
@@ -66,10 +67,8 @@ export default function PatientDashboard() {
   const [date, setDate] = useState("");
   const [symptoms, setSymptoms] = useState("");
 
-  // Get patient name
-  const patientName = user?.role === "patient" 
-    ? (user as any).firstName || "User" 
-    : "User";
+  // Get patient name from profile
+  const patientName = patientProfile?.firstName || "User";
 
   // Get upcoming appointments
   const upcomingAppointments = appointments
@@ -205,11 +204,12 @@ export default function PatientDashboard() {
       </section>
 
       {/* Consulty AI Section */}
-      <section className="bg-secondary/30 rounded-2xl p-6 relative overflow-hidden">
+      <section className="bg-gradient-to-r from-[#769382]/20 to-[#FFEBBC]/30 rounded-2xl p-6 relative overflow-hidden border-2 border-[#769382]/30">
         <div className="flex flex-col lg:flex-row lg:items-center gap-6">
           <div className="flex-1">
-            <h2 className="text-2xl lg:text-3xl font-bold text-foreground mb-2">
+            <h2 className="text-2xl lg:text-3xl font-bold text-foreground mb-2 flex items-center gap-2">
               Tell Consulty what hurts.
+              <Sparkles className="w-6 h-6 text-[#769382]" />
             </h2>
             <p className="text-muted-foreground mb-4">
               Simply type your symptoms — Consulty figures out the right doctor and department for you.
@@ -225,8 +225,10 @@ export default function PatientDashboard() {
               <Button 
                 onClick={handleConsultySubmit}
                 disabled={!symptoms.trim()}
-                className="mt-2 bg-primary text-primary-foreground hover:bg-primary/90"
+                className="mt-2 bg-[#769382] text-white hover:bg-[#769382]/90 shadow-lg px-6 py-3 text-base font-semibold"
+                size="lg"
               >
+                <Sparkles className="w-5 h-5 mr-2" />
                 Ask Consulty
               </Button>
             </div>
@@ -238,6 +240,7 @@ export default function PatientDashboard() {
               src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Consulty%20AI%20Robot.png-06mGlgpODX9iZuCiwFkaHZT4PuQbRr.jpeg"
               alt="Consulty AI Assistant"
               className="w-full h-full object-contain"
+              style={{ background: 'transparent' }}
             />
           </div>
         </div>

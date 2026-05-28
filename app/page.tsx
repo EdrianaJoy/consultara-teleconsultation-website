@@ -89,8 +89,7 @@ export default function LandingPage() {
               </h1>
               
               <p className="text-lg text-[#2D3B35]/70 max-w-lg leading-relaxed">
-                Connect with certified healthcare professionals from the comfort of your home. 
-                Book appointments, consult online, and manage your health records securely with ConsulTara.
+                Your virtual clinic, anytime anywhere.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">
@@ -239,7 +238,8 @@ export default function LandingPage() {
               How It Works
             </h2>
             <p className="text-[#2D3B35]/70 max-w-2xl mx-auto">
-              Getting started with ConsulTara is simple. Follow these steps to connect with a healthcare professional.
+              Getting started with ConsulTara is simple.<br />
+              Follow these steps to connect with a healthcare professional.
             </p>
           </div>
 
@@ -251,7 +251,7 @@ export default function LandingPage() {
               { step: '04', title: 'Start Consultation', description: 'Connect with your doctor via video, audio, or chat.' }
             ].map((item, index) => (
               <div key={index} className="relative">
-                <div className="text-6xl font-bold text-[#769382]/10 mb-4">{item.step}</div>
+                <div className="text-6xl font-bold text-[#769382] mb-4">{item.step}</div>
                 <h3 className="text-lg font-semibold text-[#2D3B35] mb-2">{item.title}</h3>
                 <p className="text-[#2D3B35]/70 text-sm">{item.description}</p>
                 {index < 3 && (

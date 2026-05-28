@@ -127,8 +127,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: true };
     }
 
-    // Check if returning user (has an existing account in localStorage)
+    // Check for ALL registered users in localStorage (both patient and doctor)
+    const allUserKeys = Object.keys(localStorage).filter(key => key.startsWith('consultara_user_'));
+    
+    // Also check the main user storage
     const savedUser = localStorage.getItem(STORAGE_KEYS.USER);
+    
+    // Check registered users
+    for (const key of allUserKeys) {
+      try {
+        const storedUser = JSON.parse(localStorage.getItem(key) || '{}');
+        if (storedUser.email?.toLowerCase() === email.toLowerCase()) {
+          const user: User = storedUser;
+          localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
+          
+          // Load associated profile
+          const patientProfileKey = `consultara_patient_${user.id}`;
+          const doctorProfileKey = `consultara_doctor_${user.id}`;
+          const patientProfile = localStorage.getItem(patientProfileKey) 
+            ? JSON.parse(localStorage.getItem(patientProfileKey)!) 
+            : localStorage.getItem(STORAGE_KEYS.PATIENT_PROFILE) 
+              ? JSON.parse(localStorage.getItem(STORAGE_KEYS.PATIENT_PROFILE)!) 
+              : null;
+          const doctorProfile = localStorage.getItem(doctorProfileKey) 
+            ? JSON.parse(localStorage.getItem(doctorProfileKey)!) 
+            : localStorage.getItem(STORAGE_KEYS.DOCTOR_PROFILE) 
+              ? JSON.parse(localStorage.getItem(STORAGE_KEYS.DOCTOR_PROFILE)!) 
+              : null;
+
+          setState({
+            user,
+            patientProfile: user.role === 'patient' ? patientProfile : null,
+            doctorProfile: user.role === 'doctor' ? doctorProfile : null,
+            isLoading: false,
+            isAuthenticated: true,
+          });
+
+          return { success: true };
+        }
+      } catch (e) {
+        console.error('Error parsing stored user:', e);
+      }
+    }
+
+    // Check main storage as fallback
     if (savedUser) {
       const user = JSON.parse(savedUser) as User;
       if (user.email.toLowerCase() === email.toLowerCase()) {
@@ -165,7 +207,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       createdAt: new Date().toISOString(),
     };
 
+    // Store user in main storage
     localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
+    
+    // Also store in indexed storage for retrieval during sign-in
+    localStorage.setItem(`consultara_user_${user.id}`, JSON.stringify(user));
 
     setState({
       user,
@@ -291,12 +337,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         zipCode: '',
         emergencyContact: '',
         emergencyPhone: '',
+        weight: '',
+        height: '',
+        basicMedicalHistory: '',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         ...(profileData as Partial<PatientProfile>),
       };
 
       localStorage.setItem(STORAGE_KEYS.PATIENT_PROFILE, JSON.stringify(patientProfile));
+      // Also store indexed for retrieval
+      localStorage.setItem(`consultara_patient_${state.user.id}`, JSON.stringify(patientProfile));
 
       setState(prev => ({
         ...prev,
@@ -316,7 +367,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         yearsOfExperience: 0,
         education: '',
         bio: '',
-        consultationFee: 100,
+        consultationFee: 500,
         avatar: '',
         availability: {
           monday: { isWorkingDay: true, slots: [] },
@@ -327,16 +378,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           saturday: { isWorkingDay: false, slots: [] },
           sunday: { isWorkingDay: false, slots: [] },
         },
-        languages: ['English'],
+        languages: ['English', 'Filipino'],
         rating: 0,
         totalReviews: 0,
         isAvailable: true,
+        location: 'Metro Manila',
+        acceptsInsurance: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         ...(profileData as Partial<DoctorProfile>),
       };
 
       localStorage.setItem(STORAGE_KEYS.DOCTOR_PROFILE, JSON.stringify(doctorProfile));
+      // Also store indexed for retrieval
+      localStorage.setItem(`consultara_doctor_${state.user.id}`, JSON.stringify(doctorProfile));
 
       setState(prev => ({
         ...prev,
