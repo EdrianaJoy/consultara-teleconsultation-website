@@ -310,6 +310,7 @@ export type NotificationType =
   | 'appointment-reminder'
   | 'appointment-confirmed'
   | 'appointment-cancelled'
+  | 'appointment-rescheduled'
   | 'new-message'
   | 'prescription-ready'
   | 'consultation-started'

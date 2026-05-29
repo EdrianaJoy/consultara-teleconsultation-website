@@ -290,15 +290,15 @@ export default function DoctorProfilePage({
             <p><span className="text-muted-foreground">Payment:</span> {paymentMethods.find(p => p.id === paymentMethod)?.name}</p>
           </div>
         </div>
-        <div className="space-y-4">
+        <div className="space-y-2">
           <Link href="/patient/calendar">
             <Button className="w-full bg-[#6F8D7E] hover:bg-[#5E7E6D] text-white">
               View My Appointments
             </Button>
           </Link>
-          <Link href="/patient/records">
+          <Link href="/patient/messages">
             <Button className="w-full bg-[#E9D9B5] hover:bg-[#D9C89E] text-[#2D3B35]">
-              View Medical Records
+              Open Messages
             </Button>
           </Link>
           <Link href="/patient/dashboard">

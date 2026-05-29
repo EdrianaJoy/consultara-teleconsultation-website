@@ -27,6 +27,7 @@ import {
   sampleNotifications,
   samplePatient,
 } from '@/lib/data';
+import { getDoctorPortrait, getDoctorPortraitForKey } from '@/lib/doctor-avatars';
 
 const DEFAULT_PASSWORD = 'Consultara123!';
 const DATABASE_PATH = join(process.cwd(), '.data', 'consultara.sqlite');
@@ -49,7 +50,13 @@ type AppStatePayload = {
   prescriptions: Prescription[];
 };
 
+type AppointmentUpdateResult = {
+  appointment: Appointment | null;
+  notifications: Notification[];
+};
+
 let db: DatabaseInstance | null = null;
+const seededDoctorAvatarById = new Map(doctors.map((doctor, index) => [doctor.id, getDoctorPortrait(index)]));
 
 function getDb(): DatabaseInstance {
   if (db) {
@@ -432,6 +439,7 @@ function rowToPatientProfile(row: any): PatientProfile {
 function rowToDoctorProfile(row: any): DoctorProfile {
   const availability = row.availability_json ? JSON.parse(row.availability_json) as WeeklySchedule : undefined;
   const languages = row.languages_json ? JSON.parse(row.languages_json) as string[] : [];
+  const avatar = seededDoctorAvatarById.get(row.id) || row.avatar || getDoctorPortraitForKey(row.id);
   const profile: DoctorProfile = {
     id: row.id,
     userId: row.user_id,
@@ -448,7 +456,7 @@ function rowToDoctorProfile(row: any): DoctorProfile {
     education: row.education || '',
     bio: row.bio || '',
     consultationFee: row.consultation_fee,
-    avatar: row.avatar || '',
+    avatar,
     availability: availability || {
       monday: { isWorkingDay: true, slots: [] },
       tuesday: { isWorkingDay: true, slots: [] },
@@ -542,6 +550,85 @@ function rowToNotification(row: any): Notification {
     actionUrl: row.action_url || undefined,
     createdAt: row.created_at,
   };
+}
+
+function getPatientProfileById(patientId: string): PatientProfile | null {
+  const row = getDb().prepare('SELECT * FROM patient_profiles WHERE id = ?').get(patientId);
+  return row ? rowToPatientProfile(row) : null;
+}
+
+function getDoctorProfileById(doctorId: string): DoctorProfile | null {
+  const row = getDb().prepare('SELECT * FROM doctor_profiles WHERE id = ?').get(doctorId);
+  return row ? rowToDoctorProfile(row) : null;
+}
+
+function formatAppointmentDate(date: string) {
+  return new Date(`${date}T00:00:00`).toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function buildAppointmentUpdateNotifications(previous: Appointment, next: Appointment): Omit<Notification, 'id' | 'createdAt'>[] {
+  const patientProfile = getPatientProfileById(next.patientId);
+  const doctorProfile = getDoctorProfileById(next.doctorId);
+  const patientUserId = patientProfile?.userId || next.patientId;
+  const doctorUserId = doctorProfile?.userId || next.doctorId;
+  const doctorName = doctorProfile ? `Dr. ${doctorProfile.firstName} ${doctorProfile.lastName}` : 'your doctor';
+  const patientName = patientProfile ? `${patientProfile.firstName} ${patientProfile.lastName}` : 'the patient';
+  const appointmentDate = formatAppointmentDate(next.date);
+  const appointmentTime = next.timeSlot.startTime;
+
+  if (next.status === 'cancelled' && previous.status !== 'cancelled') {
+    return [
+      {
+        userId: patientUserId,
+        type: 'appointment-cancelled',
+        title: 'Appointment Cancelled',
+        message: `Your consultation with ${doctorName} on ${appointmentDate} at ${appointmentTime} has been cancelled.`,
+        isRead: false,
+        actionUrl: '/patient/calendar',
+      },
+      {
+        userId: doctorUserId,
+        type: 'appointment-cancelled',
+        title: 'Appointment Cancelled',
+        message: `Your consultation with ${patientName} on ${appointmentDate} at ${appointmentTime} has been cancelled.`,
+        isRead: false,
+        actionUrl: '/doctor/calendar',
+      },
+    ];
+  }
+
+  const rescheduleChanged =
+    previous.date !== next.date ||
+    previous.timeSlot.startTime !== next.timeSlot.startTime ||
+    previous.timeSlot.endTime !== next.timeSlot.endTime ||
+    previous.consultationType !== next.consultationType;
+
+  if (rescheduleChanged) {
+    return [
+      {
+        userId: patientUserId,
+        type: 'appointment-rescheduled',
+        title: 'Appointment Rescheduled',
+        message: `Your consultation with ${doctorName} has been rescheduled to ${appointmentDate} at ${appointmentTime}.`,
+        isRead: false,
+        actionUrl: '/patient/calendar',
+      },
+      {
+        userId: doctorUserId,
+        type: 'appointment-rescheduled',
+        title: 'Appointment Rescheduled',
+        message: `Your consultation with ${patientName} has been rescheduled to ${appointmentDate} at ${appointmentTime}.`,
+        isRead: false,
+        actionUrl: '/doctor/calendar',
+      },
+    ];
+  }
+
+  return [];
 }
 
 function rowToConversation(row: any, lastMessage?: Message | null): Conversation {
@@ -989,21 +1076,23 @@ export const consultaraDb = {
     return appointment;
   },
 
-  updateAppointment(id: string, updates: Partial<Appointment>): Appointment | null {
+  updateAppointment(id: string, updates: Partial<Appointment>): AppointmentUpdateResult {
     const database = getDb();
     const current = database.prepare('SELECT * FROM appointments WHERE id = ?').get(id);
     if (!current) {
-      return null;
+      return { appointment: null, notifications: [] };
     }
 
+    const previousAppointment = rowToAppointment(current);
+
     const nextAppointment = {
-      ...rowToAppointment(current),
+      ...previousAppointment,
       ...updates,
       timeSlot: updates.timeSlot || rowToAppointment(current).timeSlot,
-      consultationType: (updates.consultationType || rowToAppointment(current).consultationType) as ConsultationType,
-      type: updates.type || updates.consultationType || rowToAppointment(current).consultationType,
-      time: updates.time || updates.timeSlot?.startTime || rowToAppointment(current).time,
-      reason: updates.reason || updates.symptoms || rowToAppointment(current).reason,
+      consultationType: (updates.consultationType || previousAppointment.consultationType) as ConsultationType,
+      type: updates.type || updates.consultationType || previousAppointment.consultationType,
+      time: updates.time || updates.timeSlot?.startTime || previousAppointment.time,
+      reason: updates.reason || updates.symptoms || previousAppointment.reason,
       updatedAt: new Date().toISOString(),
     } as Appointment;
 
@@ -1027,7 +1116,13 @@ export const consultaraDb = {
       id,
     );
 
-    return nextAppointment;
+    const notifications = buildAppointmentUpdateNotifications(previousAppointment, nextAppointment);
+    const persistedNotifications = notifications.map(notification => consultaraDb.addNotification(notification));
+
+    return {
+      appointment: nextAppointment,
+      notifications: persistedNotifications,
+    };
   },
 
   addMedicalRecord(record: Omit<MedicalRecord, 'id' | 'createdAt'>): MedicalRecord {

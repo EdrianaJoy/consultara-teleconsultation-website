@@ -150,9 +150,20 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       ),
     }));
 
-    void apiRequest('/api/state', {
+    void apiRequest<{ appointment: Appointment | null; notifications?: Notification[] }>('/api/state', {
       method: 'PATCH',
       body: JSON.stringify({ resource: 'appointments', action: 'update', id, updates }),
+    }).then(response => {
+      if (!response.notifications?.length) {
+        return;
+      }
+
+      setState(prev => ({
+        ...prev,
+        notifications: [...response.notifications, ...prev.notifications],
+      }));
+    }).catch(error => {
+      console.error('Error updating appointment:', error);
     });
   }, []);
 

@@ -47,7 +47,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   if (resource === 'appointments' && action === 'update') {
-    return NextResponse.json({ appointment: consultaraDb.updateAppointment(body.id, body.updates || {}) });
+    return NextResponse.json(consultaraDb.updateAppointment(body.id, body.updates || {}));
   }
 
   if (resource === 'notifications' && action === 'markRead') {

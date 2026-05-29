@@ -17,6 +17,7 @@ import type {
   Conversation,
   Message
 } from './types';
+import { getDoctorPortrait } from './doctor-avatars';
 import { extendedDoctors } from './doctors-data';
 
 // ============================================================================
@@ -792,7 +793,6 @@ type DoctorView = DoctorProfile & {
 };
 
 const usedDoctorNames = new Set<string>();
-const usedDoctorAvatars = new Set<string>();
 
 const normalizeDoctor = (doc: DoctorProfile, index: number): DoctorView => {
   let firstName = doc.firstName;
@@ -806,24 +806,12 @@ const normalizeDoctor = (doc: DoctorProfile, index: number): DoctorView => {
   const name = `${firstName} ${lastName}`.trim();
   usedDoctorNames.add(name);
 
-  let avatar = doc.avatar;
-  // Prefer local professional avatars in this order: .jpg, .png, .svg
-  const jpgAvatar = `/professional-doctors/${doc.id}.jpg`;
-  const pngAvatar = `/professional-doctors/${doc.id}.png`;
-  const svgAvatar = `/professional-doctors/${doc.id}.svg`;
-  avatar = jpgAvatar || pngAvatar || svgAvatar || doc.avatar;
-  if (!avatar || usedDoctorAvatars.has(avatar)) {
-    avatar = doc.avatar || `https://i.pravatar.cc/150?img=${(index % 70) + 1}`;
-  }
-
-  usedDoctorAvatars.add(avatar);
-
   return {
     ...doc,
     firstName,
     lastName,
     name,
-    avatar,
+    avatar: getDoctorPortrait(index),
     specialty: doc.specialization,
     location: doc.location || metroManilaLocations[index % metroManilaLocations.length],
     acceptsInsurance: doc.acceptsInsurance !== undefined ? doc.acceptsInsurance : index % 3 !== 2,
@@ -1026,6 +1014,26 @@ export const sampleNotifications: Notification[] = [
     isRead: false,
     actionUrl: '/patient/appointments/apt-002',
     createdAt: '2024-01-14T09:00:00Z'
+  },
+  {
+    id: 'notif-004',
+    userId: 'user-patient-001',
+    type: 'appointment-cancelled',
+    title: 'Appointment Cancelled',
+    message: 'Your consultation with Dr. Sarah Chen has been cancelled. Please choose a new time if needed.',
+    isRead: false,
+    actionUrl: '/patient/calendar',
+    createdAt: '2024-01-13T16:00:00Z'
+  },
+  {
+    id: 'notif-005',
+    userId: 'user-patient-001',
+    type: 'appointment-rescheduled',
+    title: 'Appointment Rescheduled',
+    message: 'Your consultation with Dr. William Brown has been rescheduled to May 31, 2026 at 3:00 PM.',
+    isRead: false,
+    actionUrl: '/patient/calendar',
+    createdAt: '2024-01-13T17:00:00Z'
   },
   {
     id: 'notif-003',

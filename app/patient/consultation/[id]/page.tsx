@@ -37,10 +37,17 @@ export default function PatientConsultationPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
-  const { appointments, updateAppointment } = useAppData();
+  const { appointments, updateAppointment, isLoading } = useAppData();
+  const consultationId = Array.isArray(params.id) ? params.id[0] : params.id;
 
-  // Find the appointment
-  const appointment = appointments.find(apt => apt.id === params.id);
+  const patientAppointments = user
+    ? appointments.filter(appointment => appointment.patientId === user.id)
+    : appointments;
+
+  const appointment = appointments.find(apt => apt.id === consultationId)
+    || patientAppointments.find(apt => apt.status === "confirmed")
+    || patientAppointments[0]
+    || null;
   const doctor = appointment ? doctors.find(d => d.id === appointment.doctorId) : null;
 
   // Video controls
@@ -70,6 +77,17 @@ export default function PatientConsultationPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-foreground mb-2">Loading consultation</h2>
+          <p className="text-muted-foreground">Preparing your session.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!appointment || !doctor) {
     return (
@@ -129,7 +147,7 @@ export default function PatientConsultationPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full overflow-hidden flex-shrink-0">
+          <div className="w-14 h-14 rounded-full overflow-hidden shrink-0">
             <img
               src={doctor.avatar}
               alt={`Dr. ${doctor.firstName} ${doctor.lastName}`}
@@ -234,7 +252,7 @@ export default function PatientConsultationPage() {
                   className="w-12 h-12 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors"
                   aria-label="Leave call"
                 >
-                  <Phone size={20} className="rotate-[135deg]" />
+                  <Phone size={20} className="rotate-135" />
                 </button>
               </div>
             </>
@@ -242,7 +260,7 @@ export default function PatientConsultationPage() {
         </div>
 
         {/* Chat Sidebar */}
-        <div className="bg-card rounded-xl border border-border flex flex-col h-[500px] lg:h-auto">
+        <div className="bg-card rounded-xl border border-border flex flex-col h-125 lg:h-auto">
           <div className="p-4 border-b border-border">
             <h3 className="font-semibold text-foreground flex items-center gap-2">
               <MessageSquare size={18} />

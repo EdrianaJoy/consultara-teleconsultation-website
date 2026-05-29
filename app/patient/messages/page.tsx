@@ -43,6 +43,20 @@ export default function MessagesPage() {
   const selectedConv = patientConversations.find(c => c.id === selectedConversation);
   const selectedDoctor = selectedConv ? doctors.find(d => d.id === selectedConv.doctorId) : null;
 
+  const latestConversationId = patientConversations
+    .slice()
+    .sort((a, b) => {
+      const aTime = new Date(a.updatedAt || a.createdAt).getTime();
+      const bTime = new Date(b.updatedAt || b.createdAt).getTime();
+      return bTime - aTime;
+    })[0]?.id;
+
+  useEffect(() => {
+    if (!selectedConversation && latestConversationId) {
+      setSelectedConversation(latestConversationId);
+    }
+  }, [latestConversationId, selectedConversation]);
+
   // Filter conversations by search
   const filteredConversations = patientConversations.filter(conv => {
     const doctor = doctors.find(d => d.id === conv.doctorId);
@@ -118,7 +132,7 @@ export default function MessagesPage() {
             <div className="p-4 text-center text-muted-foreground">
               <p>No conversations yet.</p>
               <p className="text-sm mt-2">
-                Start a conversation after booking an appointment.
+                Start a conversation after booking an appointment. Your doctor will share a short automated note here with instructions to send past prescriptions or lab results before the consultation.
               </p>
             </div>
           ) : (
@@ -140,7 +154,7 @@ export default function MessagesPage() {
                     selectedConversation === conv.id && "bg-muted"
                   )}
                 >
-                  <div className="w-12 h-12 rounded-full bg-accent overflow-hidden flex-shrink-0">
+                  <div className="w-12 h-12 rounded-full bg-accent overflow-hidden shrink-0">
                     {doctor?.avatar ? (
                       <img 
                         src={doctor.avatar} 
