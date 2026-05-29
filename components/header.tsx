@@ -43,7 +43,7 @@ export function Header({ title }: HeaderProps) {
   const notificationsRef = useRef<HTMLDivElement>(null);
 
   // Count unread notifications
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter(n => !n.isRead && !n.read).length;
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -143,7 +143,7 @@ export function Header({ title }: HeaderProps) {
                       key={notification.id}
                       className={cn(
                         "p-3 border-b border-border last:border-0 hover:bg-muted transition-colors",
-                        !notification.read && "bg-primary/5"
+                        !(notification.isRead || notification.read) && "bg-primary/5"
                       )}
                     >
                       <p className="text-sm font-medium text-foreground">

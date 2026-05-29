@@ -271,15 +271,20 @@ export default function CalendarPage() {
                       </div>
                     </div>
                     {apt.status === "confirmed" && (
-                      <div className="flex gap-2 mt-3">
-                        <Link href={`/patient/consultation/${apt.id}`} className="flex-1">
+                      <div className="grid grid-cols-3 gap-2 mt-3">
+                        <Link href={`/patient/consultation/${apt.id}`} className="col-span-1">
                           <Button size="sm" className="w-full text-xs">
                             Join
                           </Button>
                         </Link>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
+                        <Link href={`/patient/doctors/${apt.doctorId}`} className="col-span-1">
+                          <Button size="sm" variant="outline" className="w-full text-xs">
+                            Reschedule
+                          </Button>
+                        </Link>
+                        <Button
+                          size="sm"
+                          variant="outline"
                           className="text-xs"
                           onClick={() => handleCancel(apt.id)}
                         >

@@ -791,14 +791,89 @@ type DoctorView = DoctorProfile & {
   specialty: string;
 };
 
-const normalizeDoctor = (doc: DoctorProfile, index: number): DoctorView => ({
-  ...doc,
-  name: `${doc.firstName} ${doc.lastName}`,
-  specialty: doc.specialization,
-  location: doc.location || metroManilaLocations[index % metroManilaLocations.length],
-  acceptsInsurance: doc.acceptsInsurance !== undefined ? doc.acceptsInsurance : index % 3 !== 2,
-  contactNumber: doc.contactNumber || `+63-2-8100-${String(index + 1).padStart(4, '0')}`,
-});
+const usedDoctorNames = new Set<string>();
+const usedDoctorAvatars = new Set<string>();
+
+const normalizeDoctor = (doc: DoctorProfile, index: number): DoctorView => {
+  let firstName = doc.firstName;
+  let lastName = doc.lastName;
+  const baseName = `${firstName} ${lastName}`.trim();
+
+  if (usedDoctorNames.has(baseName)) {
+    lastName = `${lastName} ${index + 1}`;
+  }
+
+  const name = `${firstName} ${lastName}`.trim();
+  usedDoctorNames.add(name);
+
+  let avatar = doc.avatar;
+  // Prefer local professional avatars in this order: .jpg, .png, .svg
+  const jpgAvatar = `/professional-doctors/${doc.id}.jpg`;
+  const pngAvatar = `/professional-doctors/${doc.id}.png`;
+  const svgAvatar = `/professional-doctors/${doc.id}.svg`;
+  avatar = jpgAvatar || pngAvatar || svgAvatar || doc.avatar;
+  if (!avatar || usedDoctorAvatars.has(avatar)) {
+    avatar = doc.avatar || `https://i.pravatar.cc/150?img=${(index % 70) + 1}`;
+  }
+
+  usedDoctorAvatars.add(avatar);
+
+  return {
+    ...doc,
+    firstName,
+    lastName,
+    name,
+    avatar,
+    specialty: doc.specialization,
+    location: doc.location || metroManilaLocations[index % metroManilaLocations.length],
+    acceptsInsurance: doc.acceptsInsurance !== undefined ? doc.acceptsInsurance : index % 3 !== 2,
+    contactNumber: doc.contactNumber || `+63-2-8100-${String(index + 1).padStart(4, '0')}`,
+    availability: diversifySchedule(doc.availability, index),
+  };
+};
+
+function diversifySchedule(schedule: WeeklySchedule, index: number): WeeklySchedule {
+  const dayKeys: Array<keyof WeeklySchedule> = [
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+  ];
+
+  const offDay = dayKeys[index % dayKeys.length];
+  const shiftMode = index % 3;
+
+  const cloneDay = (day: WeeklySchedule[keyof WeeklySchedule]) => ({
+    isWorkingDay: day.isWorkingDay,
+    slots: day.slots.map(slot => ({ ...slot })),
+  });
+
+  const next: WeeklySchedule = {
+    monday: cloneDay(schedule.monday),
+    tuesday: cloneDay(schedule.tuesday),
+    wednesday: cloneDay(schedule.wednesday),
+    thursday: cloneDay(schedule.thursday),
+    friday: cloneDay(schedule.friday),
+    saturday: cloneDay(schedule.saturday),
+    sunday: cloneDay(schedule.sunday),
+  };
+
+  next[offDay] = { isWorkingDay: false, slots: [] };
+
+  dayKeys.forEach((key) => {
+    if (!next[key].isWorkingDay) return;
+    if (shiftMode === 0) {
+      next[key].slots = next[key].slots.filter(slot => slot.startTime < "12:00");
+    } else if (shiftMode === 1) {
+      next[key].slots = next[key].slots.filter(slot => slot.startTime >= "13:00");
+    }
+  });
+
+  return next;
+}
 
 // Combine base doctors with extended doctors
 export const doctors: DoctorView[] = [...baseDoctors, ...extendedDoctors].map((doc, index) =>

@@ -78,9 +78,9 @@ export default function ContactPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-foreground mb-2">Contact Us</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-2">Get in Touch</h1>
         <p className="text-muted-foreground">
-          Have questions or need support? We&apos;re here to help.
+          Have questions? Our support team is here to help you 24/7.
         </p>
       </div>
 
@@ -94,7 +94,7 @@ export default function ContactPage() {
               </div>
               <div>
                 <h3 className="font-medium text-foreground">Phone</h3>
-                <p className="text-sm text-muted-foreground">+1 (555) 123-4567</p>
+                <p className="text-sm text-muted-foreground">+63 (2) 8123-4567</p>
               </div>
             </div>
           </div>
@@ -106,7 +106,7 @@ export default function ContactPage() {
               </div>
               <div>
                 <h3 className="font-medium text-foreground">Email</h3>
-                <p className="text-sm text-muted-foreground">support@consultara.com</p>
+                <p className="text-sm text-muted-foreground">support@consultara.ph</p>
               </div>
             </div>
           </div>
@@ -131,9 +131,9 @@ export default function ContactPage() {
               <div>
                 <h3 className="font-medium text-foreground">Address</h3>
                 <p className="text-sm text-muted-foreground">
-                  123 Healthcare Ave<br />
-                  Medical District<br />
-                  New York, NY 10001
+                  BGC Corporate Center, 30th Street,<br />
+                  Bonifacio Global City, Taguig,<br />
+                  Metro Manila, Philippines
                 </p>
               </div>
             </div>
@@ -143,7 +143,7 @@ export default function ContactPage() {
         {/* Contact Form */}
         <div className="lg:col-span-2">
           <form onSubmit={handleSubmit} className="bg-card rounded-xl p-6 border border-border space-y-4">
-            <h2 className="text-lg font-semibold text-foreground mb-4">Send us a Message</h2>
+            <h2 className="text-lg font-semibold text-foreground mb-4">Send us a message</h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>

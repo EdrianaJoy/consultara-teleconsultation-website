@@ -9,7 +9,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { 
   Heart,
@@ -73,6 +73,7 @@ const departmentDescriptions: Record<string, string> = {
  */
 function DoctorCard({ doctor }: { doctor: DoctorProfile }) {
   const fullName = `Dr. ${doctor.firstName} ${doctor.lastName}`;
+  const consultationFee = Math.max(500, doctor.yearsOfExperience * 100);
   
   return (
     <Link
@@ -126,7 +127,7 @@ function DoctorCard({ doctor }: { doctor: DoctorProfile }) {
             {doctor.yearsOfExperience} years exp.
           </span>
           <span className="px-2 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">
-            ₱{doctor.consultationFee.toLocaleString()} per session
+            ₱{consultationFee.toLocaleString()} per session
           </span>
         </div>
         
@@ -153,6 +154,24 @@ function DoctorCard({ doctor }: { doctor: DoctorProfile }) {
 export default function ServicesPage() {
   const [selectedDepartment, setSelectedDepartment] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [doctorCatalog, setDoctorCatalog] = useState<DoctorProfile[]>(doctors);
+
+  useEffect(() => {
+    const loadDoctors = async () => {
+      try {
+        const response = await fetch("/api/doctors", { cache: "no-store" });
+        if (!response.ok) return;
+        const payload = await response.json() as { doctors?: DoctorProfile[] };
+        if (payload.doctors && payload.doctors.length > 0) {
+          setDoctorCatalog(payload.doctors);
+        }
+      } catch (error) {
+        console.error("Failed to load doctors:", error);
+      }
+    };
+
+    void loadDoctors();
+  }, []);
 
   // Get department name from ID
   const getDeptNameFromId = (deptId: string): string => {
@@ -161,7 +180,7 @@ export default function ServicesPage() {
   };
 
   // Filter doctors based on department and search
-  const filteredDoctors = doctors.filter(doctor => {
+  const filteredDoctors = doctorCatalog.filter(doctor => {
     // Department filter
     if (selectedDepartment) {
       const deptName = getDeptNameFromId(doctor.department);
@@ -182,7 +201,7 @@ export default function ServicesPage() {
 
   // Get doctors count per department
   const getDoctorCountForDept = (deptName: string): number => {
-    return doctors.filter(d => getDeptNameFromId(d.department) === deptName).length;
+    return doctorCatalog.filter(d => getDeptNameFromId(d.department) === deptName).length;
   };
 
   return (

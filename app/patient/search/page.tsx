@@ -38,11 +38,16 @@ function getDeptNameFromId(deptId: string): string {
   return dept?.name || deptId;
 }
 
+function getConsultationFee(doctor: DoctorProfile) {
+  return Math.max(500, doctor.yearsOfExperience * 100);
+}
+
 /**
  * Doctor Card Component
  */
 function DoctorCard({ doctor }: { doctor: DoctorProfile }) {
   const fullName = `Dr. ${doctor.firstName} ${doctor.lastName}`;
+  const consultationFee = getConsultationFee(doctor);
   
   return (
     <Link
@@ -91,7 +96,7 @@ function DoctorCard({ doctor }: { doctor: DoctorProfile }) {
           {doctor.yearsOfExperience} years exp.
         </span>
         <span className="px-2 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">
-          ₱{doctor.consultationFee.toLocaleString()}
+          ₱{consultationFee.toLocaleString()}
         </span>
         {doctor.acceptsInsurance && (
           <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs flex items-center gap-1">
@@ -121,11 +126,29 @@ function SearchContent() {
   const [selectedLocation, setSelectedLocation] = useState(searchParams.get("location") || "");
   const [selectedSpecialty, setSelectedSpecialty] = useState(searchParams.get("specialty") || "");
   const [showFilters, setShowFilters] = useState(false);
+  const [doctorCatalog, setDoctorCatalog] = useState<DoctorProfile[]>(doctors);
   const [filteredDoctors, setFilteredDoctors] = useState<DoctorProfile[]>(doctors);
+
+  useEffect(() => {
+    const loadDoctors = async () => {
+      try {
+        const response = await fetch("/api/doctors", { cache: "no-store" });
+        if (!response.ok) return;
+        const payload = await response.json() as { doctors?: DoctorProfile[] };
+        if (payload.doctors && payload.doctors.length > 0) {
+          setDoctorCatalog(payload.doctors);
+        }
+      } catch (error) {
+        console.error("Failed to load doctors:", error);
+      }
+    };
+
+    void loadDoctors();
+  }, []);
 
   // Apply filters
   useEffect(() => {
-    let filtered = [...doctors];
+    let filtered = [...doctorCatalog];
 
     // Filter by search query
     if (searchQuery) {
@@ -152,7 +175,7 @@ function SearchContent() {
     }
 
     setFilteredDoctors(filtered);
-  }, [searchQuery, selectedLocation, selectedSpecialty]);
+  }, [doctorCatalog, searchQuery, selectedLocation, selectedSpecialty]);
 
   /**
    * Clear all filters

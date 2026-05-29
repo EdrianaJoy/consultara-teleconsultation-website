@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { doctors, departments } from "@/lib/data";
+import { DoctorProfile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -47,15 +48,50 @@ interface SymptomAnalysis {
   symptoms: string[];
   recommendedDepartment: string;
   urgencyLevel: "low" | "medium" | "high" | "emergency";
-  recommendedDoctors: typeof doctors;
+  recommendedDoctors: DoctorProfile[];
   disclaimer: string;
+}
+
+function rephraseSymptom(symptom: string): string {
+  let text = symptom.trim().toLowerCase();
+  if (!text) return "";
+
+  const patterns: Array<{ regex: RegExp; replace: string }> = [
+    { regex: /^(i have|i'm having|im having|having|feeling)\s+/i, replace: "" },
+    { regex: /^(my)\s+/i, replace: "" },
+    { regex: /pain in (?:my|the)\s+/i, replace: "" },
+  ];
+
+  patterns.forEach(({ regex, replace }) => {
+    text = text.replace(regex, replace).trim();
+  });
+
+  if (/hurts?$/.test(text)) {
+    text = text.replace(/hurts?$/, "pain").trim();
+  }
+
+  if (!text.includes("pain") && /ache(s)?$/.test(text)) {
+    text = text.replace(/aches?$/, "pain").trim();
+  }
+
+  if (!text.includes("pain") && /pain/.test(symptom.toLowerCase())) {
+    text = text.replace(/pain/i, "pain").trim();
+  }
+
+  return text;
+}
+
+function summarizeSymptoms(input: string, analysis: SymptomAnalysis): string {
+  const sources = analysis.symptoms.length > 0 ? analysis.symptoms : [input];
+  const rephrased = sources.map(rephraseSymptom).filter(Boolean);
+  return rephrased.length > 0 ? rephrased.join(", ") : input.trim();
 }
 
 /**
  * Analyze symptoms and recommend department/doctors
  * This simulates AI analysis - in production, this would call an AI API
  */
-function analyzeSymptoms(symptoms: string): SymptomAnalysis {
+function analyzeSymptoms(symptoms: string, doctorCatalog: DoctorProfile[]): SymptomAnalysis {
   const lowerSymptoms = symptoms.toLowerCase();
   
   // Symptom to department mapping
@@ -137,7 +173,7 @@ function analyzeSymptoms(symptoms: string): SymptomAnalysis {
   const deptId = deptInfo?.id || "general-medicine";
 
   // Find doctors in the recommended department
-  const recommendedDoctors = doctors
+  const recommendedDoctors = doctorCatalog
     .filter(doc => doc.department === deptId && doc.isAvailable)
     .sort((a, b) => b.rating - a.rating)
     .slice(0, 3);
@@ -171,6 +207,23 @@ function generateResponse(symptoms: string, analysis: SymptomAnalysis): string {
   return `I understand you're experiencing: ${analysis.symptoms.join(", ")}.\n\n${urgencyMessages[analysis.urgencyLevel]}\n\nBased on your symptoms, I recommend visiting the **${analysis.recommendedDepartment}** department. I've found ${analysis.recommendedDoctors.length} highly-rated doctors who specialize in this area and are available for consultations.`;
 }
 
+function buildResponse(symptoms: string, analysis: SymptomAnalysis): string {
+  const urgencyMessages = {
+    emergency: "Your symptoms suggest this may require immediate medical attention. Please consider visiting an emergency room or calling emergency services.",
+    high: "Based on your symptoms, I recommend seeking medical attention soon. Please consider scheduling an appointment as early as possible.",
+    medium: "Your symptoms suggest a visit to a specialist would be beneficial. I recommend scheduling an appointment at your convenience.",
+    low: "Your symptoms appear to be manageable. However, if they persist or worsen, please consult with a healthcare provider.",
+  };
+
+  const summary = summarizeSymptoms(symptoms, analysis);
+
+  return `I understand you're experiencing: ${summary}.
+
+${urgencyMessages[analysis.urgencyLevel]}
+
+Based on your symptoms, I recommend visiting the ${analysis.recommendedDepartment} department. I've found ${analysis.recommendedDoctors.length} highly-rated doctors who specialize in this area and are available for consultations.`;
+}
+
 /**
  * Consulty AI Page Component
  */
@@ -179,11 +232,31 @@ export default function ConsultyPage() {
   const router = useRouter();
   const { user, patientProfile } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lastSendRef = useRef<{ content: string; time: number } | null>(null);
+  const initialSendRef = useRef(false);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [currentAnalysis, setCurrentAnalysis] = useState<SymptomAnalysis | null>(null);
+  const [doctorCatalog, setDoctorCatalog] = useState<DoctorProfile[]>(doctors);
+
+  useEffect(() => {
+    const loadDoctors = async () => {
+      try {
+        const response = await fetch("/api/doctors", { cache: "no-store" });
+        if (!response.ok) return;
+        const payload = await response.json() as { doctors?: DoctorProfile[] };
+        if (payload.doctors && payload.doctors.length > 0) {
+          setDoctorCatalog(payload.doctors);
+        }
+      } catch (error) {
+        console.error("Failed to load doctors:", error);
+      }
+    };
+
+    void loadDoctors();
+  }, []);
 
   // Load chat history from localStorage
   useEffect(() => {
@@ -224,7 +297,8 @@ export default function ConsultyPage() {
   // Process initial symptoms from URL
   useEffect(() => {
     const initialSymptoms = searchParams.get("symptoms");
-    if (initialSymptoms && messages.length <= 1) {
+    if (initialSymptoms && messages.length <= 1 && !initialSendRef.current) {
+      initialSendRef.current = true;
       setTimeout(() => {
         handleSendMessage(initialSymptoms);
       }, 500);
@@ -242,6 +316,13 @@ export default function ConsultyPage() {
   const handleSendMessage = async (content?: string) => {
     const messageContent = content || inputValue.trim();
     if (!messageContent) return;
+    if (isTyping) return;
+
+    const now = Date.now();
+    if (lastSendRef.current && lastSendRef.current.content === messageContent && now - lastSendRef.current.time < 800) {
+      return;
+    }
+    lastSendRef.current = { content: messageContent, time: now };
 
     // Add user message
     const userMessage: Message = {
@@ -259,8 +340,8 @@ export default function ConsultyPage() {
     await new Promise(resolve => setTimeout(resolve, 1500));
 
     // Analyze symptoms
-    const analysis = analyzeSymptoms(messageContent);
-    const responseContent = generateResponse(messageContent, analysis);
+    const analysis = analyzeSymptoms(messageContent, doctorCatalog);
+    const responseContent = buildResponse(messageContent, analysis);
 
     // Add assistant message
     const assistantMessage: Message = {
@@ -320,10 +401,9 @@ export default function ConsultyPage() {
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-full overflow-hidden bg-white flex items-center justify-center">
             <img
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Consulty%20AI%20Robot.png-vukUbYjKh8Lwss0u9o9p2SyD52gnuZ.jpeg"
+              src="https://img.icons8.com/fluency/96/robot.png"
               alt="Consulty AI"
               className="w-full h-full object-contain"
-              style={{ background: 'transparent' }}
             />
           </div>
           <div>
@@ -351,9 +431,9 @@ export default function ConsultyPage() {
               )}
             >
               {message.role === "assistant" && (
-                <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
+                <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
                   <img
-                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Consulty%20AI%20Robot.png-vukUbYjKh8Lwss0u9o9p2SyD52gnuZ.jpeg"
+                    src="https://img.icons8.com/fluency/96/robot.png"
                     alt="Consulty"
                     className="w-full h-full object-cover"
                   />
@@ -367,7 +447,27 @@ export default function ConsultyPage() {
                     : "bg-card text-foreground border border-border rounded-bl-md"
                 )}
               >
-                <p className="whitespace-pre-wrap">{message.content}</p>
+                <p className="whitespace-pre-wrap">
+                  {message.role === "assistant" && message.analysis?.recommendedDepartment ? (
+                    (() => {
+                      const content = message.content.replace(/\*\*/g, "");
+                      const dept = message.analysis?.recommendedDepartment || "";
+                      const index = content.indexOf(dept);
+                      if (index === -1) return content;
+                      const before = content.slice(0, index);
+                      const after = content.slice(index + dept.length);
+                      return (
+                        <>
+                          {before}
+                          <strong>{dept}</strong>
+                          {after}
+                        </>
+                      );
+                    })()
+                  ) : (
+                    message.role === "assistant" ? message.content.replace(/\*\*/g, "") : message.content
+                  )}
+                </p>
                 <p className={cn(
                   "text-xs mt-2",
                   message.role === "user" ? "text-primary-foreground/70" : "text-muted-foreground"
@@ -376,7 +476,7 @@ export default function ConsultyPage() {
                 </p>
               </div>
               {message.role === "user" && (
-                <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center shrink-0">
                   <User size={16} className="text-muted-foreground" />
                 </div>
               )}
@@ -421,7 +521,7 @@ export default function ConsultyPage() {
                         key={doctor.id}
                         className="flex items-center gap-4 p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
                       >
-                        <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
+                        <div className="w-12 h-12 rounded-full overflow-hidden shrink-0">
                           <img
                             src={doctor.avatar}
                             alt={`Dr. ${doctor.firstName} ${doctor.lastName}`}
@@ -432,7 +532,7 @@ export default function ConsultyPage() {
                           <p className="font-medium text-foreground">
                             Dr. {doctor.firstName} {doctor.lastName}
                           </p>
-                          <p className="text-sm text-muted-foreground">{doctor.specialization}</p>
+                          <p className="text-sm font-semibold text-primary">{doctor.specialization}</p>
                           <div className="flex items-center gap-2 mt-1">
                             <div className="flex items-center gap-1">
                               <Star size={12} className="text-yellow-500 fill-yellow-500" />
@@ -463,7 +563,7 @@ export default function ConsultyPage() {
 
                 {/* Disclaimer */}
                 <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <AlertTriangle className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <AlertTriangle className="w-4 h-4 text-yellow-600 shrink-0 mt-0.5" />
                   <p className="text-xs text-yellow-700">{message.analysis.disclaimer}</p>
                 </div>
               </div>
@@ -474,9 +574,9 @@ export default function ConsultyPage() {
         {/* Typing Indicator */}
         {isTyping && (
           <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
+            <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
               <img
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Consulty%20AI%20Robot.png-vukUbYjKh8Lwss0u9o9p2SyD52gnuZ.jpeg"
+                src="https://img.icons8.com/fluency/96/robot.png"
                 alt="Consulty"
                 className="w-full h-full object-cover"
               />

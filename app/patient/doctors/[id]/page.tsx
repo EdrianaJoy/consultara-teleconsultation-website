@@ -13,7 +13,7 @@
 
 "use client";
 
-import { useState, use } from "react";
+import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
@@ -37,42 +37,76 @@ import { doctors, departments } from "@/lib/data";
 import { useAuth } from "@/lib/auth-context";
 import { useAppData } from "@/lib/app-data-context";
 import { Button } from "@/components/ui/button";
-import { DoctorProfile } from "@/lib/types";
+import { DoctorProfile, WeeklySchedule } from "@/lib/types";
 
-/**
- * Generate available time slots for a given date
- */
-function generateTimeSlots(): string[] {
-  const slots: string[] = [];
-  for (let hour = 9; hour <= 17; hour++) {
-    const time = `${hour.toString().padStart(2, "0")}:00`;
-    slots.push(time);
-    if (hour < 17) {
-      slots.push(`${hour.toString().padStart(2, "0")}:30`);
-    }
-  }
-  return slots;
-}
+type AvailabilitySlot = { time: string; endTime: string; isDisabled: boolean };
+
+const weekdayKeys = [
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+] as const;
 
 /**
  * Get next 7 days for booking
  */
-function getNextDays(count: number): { date: string; dayName: string; dayNum: string; isToday: boolean }[] {
-  const days = [];
+function getNextDays(count: number, schedule: WeeklySchedule): { date: string; dayName: string; dayNum: string; isToday: boolean; isWorkingDay: boolean }[] {
+  const days: { date: string; dayName: string; dayNum: string; isToday: boolean; isWorkingDay: boolean }[] = [];
   const today = new Date();
   
   for (let i = 0; i < count; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
+    const dayKey = weekdayKeys[date.getDay()];
+    const isWorkingDay = schedule[dayKey]?.isWorkingDay ?? false;
     days.push({
       date: date.toISOString().split("T")[0],
       dayName: date.toLocaleDateString("en-US", { weekday: "short" }),
       dayNum: date.getDate().toString(),
       isToday: i === 0,
+      isWorkingDay,
     });
   }
   
   return days;
+}
+
+function getScheduleForDate(date: string, schedule: WeeklySchedule) {
+  const dayIndex = new Date(`${date}T00:00:00`).getDay();
+  const dayKey = weekdayKeys[dayIndex];
+  return schedule[dayKey];
+}
+
+function parseTimeToMinutes(time: string) {
+  const [hour, minute] = time.split(":").map(Number);
+  return hour * 60 + minute;
+}
+
+function getAvailableSlots(date: string, schedule: WeeklySchedule): AvailabilitySlot[] {
+  const daySchedule = getScheduleForDate(date, schedule);
+  if (!daySchedule?.isWorkingDay) return [];
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+  const isToday = date === todayStr;
+
+  return daySchedule.slots.map(slot => {
+    const slotMinutes = parseTimeToMinutes(slot.startTime);
+    const isPast = isToday && slotMinutes <= nowMinutes;
+    return {
+      time: slot.startTime,
+      endTime: slot.endTime,
+      isDisabled: !slot.isAvailable || isPast,
+    };
+  });
+}
+
+function getConsultationFee(doctor: DoctorProfile) {
+  return Math.max(500, doctor.yearsOfExperience * 100);
 }
 
 /**
@@ -105,7 +139,7 @@ export default function DoctorProfilePage({
   const resolvedParams = use(params);
   const router = useRouter();
   const { user, patientProfile } = useAuth();
-  const { createAppointment, addNotification } = useAppData();
+  const { createAppointment, addMedicalRecord, addNotification, getOrCreateConversation, addMessage } = useAppData();
   
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedTime, setSelectedTime] = useState<string>("");
@@ -115,8 +149,32 @@ export default function DoctorProfilePage({
   const [isBooking, setIsBooking] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
 
+  const [doctorCatalog, setDoctorCatalog] = useState<DoctorProfile[]>(doctors);
+
+  useEffect(() => {
+    const loadDoctors = async () => {
+      try {
+        const response = await fetch("/api/doctors", { cache: "no-store" });
+        if (!response.ok) return;
+        const payload = await response.json() as { doctors?: DoctorProfile[] };
+        if (payload.doctors && payload.doctors.length > 0) {
+          setDoctorCatalog(payload.doctors);
+        }
+      } catch (error) {
+        console.error("Failed to load doctors:", error);
+      }
+    };
+
+    void loadDoctors();
+  }, []);
+
   // Find doctor
-  const doctor = doctors.find(d => d.id === resolvedParams.id) as DoctorProfile | undefined;
+  const doctor = doctorCatalog.find(d => d.id === resolvedParams.id) as DoctorProfile | undefined;
+
+  useEffect(() => {
+    setSelectedTime("");
+    setPaymentMethod("");
+  }, [selectedDate]);
 
   if (!doctor) {
     return (
@@ -133,8 +191,10 @@ export default function DoctorProfilePage({
   }
 
   const fullName = `Dr. ${doctor.firstName} ${doctor.lastName}`;
-  const availableDays = getNextDays(7);
-  const timeSlots = generateTimeSlots();
+  const availableDays = getNextDays(7, doctor.availability);
+  const availableSlots = selectedDate ? getAvailableSlots(selectedDate, doctor.availability) : [];
+  const selectedSlot = availableSlots.find(slot => slot.time === selectedTime) || null;
+  const consultationFee = getConsultationFee(doctor);
 
   // Check if doctor accepts insurance
   const availablePaymentMethods = doctor.acceptsInsurance 
@@ -145,7 +205,7 @@ export default function DoctorProfilePage({
    * Handle appointment booking
    */
   const handleBookAppointment = async () => {
-    if (!selectedDate || !selectedTime || !user || !paymentMethod) return;
+    if (!selectedDate || !selectedTime || !user || !paymentMethod || !selectedSlot) return;
 
     setIsBooking(true);
 
@@ -157,10 +217,39 @@ export default function DoctorProfilePage({
       patientId: user.id,
       doctorId: doctor.id,
       date: selectedDate,
-      timeSlot: { startTime: selectedTime, endTime: selectedTime, isAvailable: false },
+      timeSlot: { startTime: selectedTime, endTime: selectedSlot.endTime, isAvailable: false },
       consultationType: consultationType,
       status: "confirmed",
       symptoms: reason || "General Consultation",
+    });
+
+    addMedicalRecord({
+      patientId: user.id,
+      consultationId: appointment.id,
+      doctorId: doctor.id,
+      doctorName: fullName,
+      date: selectedDate,
+      title: "Scheduled Consultation",
+      type: "consultation",
+      diagnosis: "Pending consultation",
+      symptoms: [reason || "General Consultation"],
+      treatment: "To be determined",
+      notes: "Consultation scheduled. Records will be updated after the session.",
+      followUpRequired: false,
+    });
+
+    const conversation = getOrCreateConversation(user.id, doctor.id);
+    addMessage({
+      id: `msg-${Date.now()}`,
+      conversationId: conversation.id,
+      senderId: doctor.id,
+      senderRole: "doctor",
+      senderType: "doctor",
+      content: `Hello${patientProfile?.firstName ? ` ${patientProfile.firstName}` : ""}! Your ${consultationType} consultation with ${fullName} is scheduled for ${new Date(selectedDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} at ${selectedTime}. Please upload any past prescriptions or lab results here so we can review them before your appointment.`,
+      isRead: false,
+      read: false,
+      createdAt: new Date().toISOString(),
+      timestamp: new Date().toISOString(),
     });
 
     // Add notification for the patient
@@ -197,19 +286,25 @@ export default function DoctorProfilePage({
           <div className="space-y-2 text-sm">
             <p><span className="text-muted-foreground">Doctor:</span> {fullName}</p>
             <p><span className="text-muted-foreground">Specialty:</span> {doctor.specialization}</p>
-            <p><span className="text-muted-foreground">Fee:</span> ₱{doctor.consultationFee.toLocaleString()}</p>
+            <p><span className="text-muted-foreground">Fee:</span> ₱{consultationFee.toLocaleString()}</p>
             <p><span className="text-muted-foreground">Payment:</span> {paymentMethods.find(p => p.id === paymentMethod)?.name}</p>
           </div>
         </div>
-        <div className="space-y-3">
+        <div className="space-y-4">
           <Link href="/patient/calendar">
-            <Button className="w-full">View My Appointments</Button>
+            <Button className="w-full bg-[#6F8D7E] hover:bg-[#5E7E6D] text-white">
+              View My Appointments
+            </Button>
           </Link>
           <Link href="/patient/records">
-            <Button variant="outline" className="w-full">View Medical Records</Button>
+            <Button className="w-full bg-[#E9D9B5] hover:bg-[#D9C89E] text-[#2D3B35]">
+              View Medical Records
+            </Button>
           </Link>
           <Link href="/patient/dashboard">
-            <Button variant="ghost" className="w-full">Back to Dashboard</Button>
+            <Button className="w-full bg-[#3E5C52] hover:bg-[#2F4C44] text-white">
+              Back to Dashboard
+            </Button>
           </Link>
         </div>
       </div>
@@ -233,7 +328,7 @@ export default function DoctorProfilePage({
           {/* Basic Info */}
           <div className="bg-card rounded-xl p-6 border border-border">
             <div className="flex gap-6">
-              <div className="w-32 h-32 rounded-xl bg-accent overflow-hidden flex-shrink-0">
+              <div className="w-32 h-32 rounded-xl bg-accent overflow-hidden shrink-0">
                 {doctor.avatar ? (
                   <img 
                     src={doctor.avatar} 
@@ -415,10 +510,13 @@ export default function DoctorProfilePage({
                   <button
                     key={day.date}
                     onClick={() => setSelectedDate(day.date)}
-                    className={`flex-shrink-0 w-14 py-2 rounded-lg border text-center transition-colors ${
+                    disabled={!day.isWorkingDay}
+                    className={`shrink-0 w-14 py-2 rounded-lg border text-center transition-colors ${
                       selectedDate === day.date
                         ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-background border-border text-foreground hover:bg-muted"
+                        : day.isWorkingDay
+                          ? "bg-background border-border text-foreground hover:bg-muted"
+                          : "bg-muted text-muted-foreground border-border cursor-not-allowed"
                     }`}
                   >
                     <div className="text-xs">{day.dayName}</div>
@@ -427,6 +525,9 @@ export default function DoctorProfilePage({
                   </button>
                 ))}
               </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Only available days can be booked.
+              </p>
             </div>
 
             {/* Time Selection */}
@@ -436,17 +537,22 @@ export default function DoctorProfilePage({
                   Select Time
                 </label>
                 <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto">
-                  {timeSlots.map((time) => (
+                  {availableSlots.length === 0 ? (
+                    <p className="text-sm text-muted-foreground col-span-3">No available slots for this day.</p>
+                  ) : availableSlots.map((slot) => (
                     <button
-                      key={time}
-                      onClick={() => setSelectedTime(time)}
+                      key={slot.time}
+                      onClick={() => setSelectedTime(slot.time)}
+                      disabled={slot.isDisabled}
                       className={`py-2 rounded-lg border text-sm transition-colors ${
-                        selectedTime === time
+                        selectedTime === slot.time
                           ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-background border-border text-foreground hover:bg-muted"
+                          : slot.isDisabled
+                            ? "bg-muted text-muted-foreground border-border cursor-not-allowed"
+                            : "bg-background border-border text-foreground hover:bg-muted"
                       }`}
                     >
-                      {time}
+                      {slot.time}
                     </button>
                   ))}
                 </div>
@@ -500,7 +606,7 @@ export default function DoctorProfilePage({
             <div className="flex items-center justify-between py-3 border-t border-border mb-4">
               <span className="text-muted-foreground">Consultation Fee</span>
               <span className="text-xl font-bold text-foreground">
-                ₱{doctor.consultationFee.toLocaleString()}
+                ₱{consultationFee.toLocaleString()}
               </span>
             </div>
 

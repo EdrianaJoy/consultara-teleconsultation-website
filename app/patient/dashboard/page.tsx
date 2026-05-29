@@ -12,7 +12,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
@@ -34,6 +34,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { useAppData } from "@/lib/app-data-context";
 import { DEPARTMENTS, LOCATIONS, doctors } from "@/lib/data";
+import { DoctorProfile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -60,12 +61,30 @@ export default function PatientDashboard() {
   const router = useRouter();
   const { user, patientProfile } = useAuth();
   const { appointments } = useAppData();
+  const [doctorCatalog, setDoctorCatalog] = useState<DoctorProfile[]>(doctors);
   
   // Search filters state
   const [location, setLocation] = useState("");
   const [specialty, setSpecialty] = useState("");
   const [date, setDate] = useState("");
   const [symptoms, setSymptoms] = useState("");
+
+  useEffect(() => {
+    const loadDoctors = async () => {
+      try {
+        const response = await fetch("/api/doctors", { cache: "no-store" });
+        if (!response.ok) return;
+        const payload = await response.json() as { doctors?: DoctorProfile[] };
+        if (payload.doctors && payload.doctors.length > 0) {
+          setDoctorCatalog(payload.doctors);
+        }
+      } catch (error) {
+        console.error("Failed to load doctors:", error);
+      }
+    };
+
+    void loadDoctors();
+  }, []);
 
   // Get patient name from profile
   const patientName = patientProfile?.firstName || "User";
@@ -237,10 +256,9 @@ export default function PatientDashboard() {
           {/* Consulty Robot Image */}
           <div className="hidden lg:block w-48 h-48 flex-shrink-0">
             <img
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Consulty%20AI%20Robot.png-06mGlgpODX9iZuCiwFkaHZT4PuQbRr.jpeg"
+              src="/consulty-robot.png"
               alt="Consulty AI Assistant"
               className="w-full h-full object-contain"
-              style={{ background: 'transparent' }}
             />
           </div>
         </div>
@@ -260,11 +278,11 @@ export default function PatientDashboard() {
           </div>
           <div className="space-y-3">
             {upcomingAppointments.map((apt) => {
-              const doctor = doctors.find(d => d.id === apt.doctorId);
+              const doctor = doctorCatalog.find(d => d.id === apt.doctorId);
               return (
                 <div 
                   key={apt.id}
-                  className="flex items-center gap-4 p-4 bg-muted rounded-xl"
+                  className="flex items-center gap-4 p-4 rounded-xl bg-[#8DAA9B]/30 border border-[#8DAA9B]/40"
                 >
                   <div className="w-12 h-12 rounded-full bg-accent overflow-hidden flex-shrink-0">
                     {doctor?.avatar ? (

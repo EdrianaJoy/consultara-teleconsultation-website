@@ -946,6 +946,12 @@ export const consultaraDb = {
     };
   },
 
+  getDoctors(): DoctorProfile[] {
+    const database = getDb();
+    const rows = database.prepare('SELECT * FROM doctor_profiles ORDER BY last_name ASC, first_name ASC').all();
+    return rows.map(rowToDoctorProfile);
+  },
+
   createAppointment(input: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>): Appointment {
     const database = getDb();
     const now = new Date().toISOString();

@@ -30,7 +30,8 @@ import {
   Users,
   Clock,
   ClipboardList,
-  Bot
+  Bot,
+  Bell
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
@@ -71,6 +72,7 @@ function getNavSections(role: "patient" | "doctor"): NavSection[] {
         title: "Personal",
         items: [
           { label: "Messages", href: "/patient/messages", icon: <MessageSquare size={20} /> },
+          { label: "Notifications", href: "/patient/notifications", icon: <Bell size={20} /> },
           { label: "Medical Records", href: "/patient/records", icon: <FileText size={20} /> },
           { label: "Calendar", href: "/patient/calendar", icon: <Calendar size={20} /> },
         ],

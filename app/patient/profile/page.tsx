@@ -8,7 +8,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { 
   User, 
   Mail, 
@@ -32,6 +32,7 @@ export default function PatientProfilePage() {
   const { user, updateUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
   
   const patient = user as PatientUser | null;
   
@@ -44,8 +45,15 @@ export default function PatientProfilePage() {
     gender: patient?.gender || "",
     address: patient?.address || "",
     emergencyContact: patient?.emergencyContact || "",
+    emergencyPhone: patient?.emergencyPhone || "",
+    weight: patient?.weight || "",
+    height: patient?.height || "",
     bloodType: patient?.bloodType || "",
     allergies: patient?.allergies?.join(", ") || "",
+    medicalConditions: patient?.medicalConditions?.join(", ") || "",
+    currentMedications: patient?.currentMedications?.join(", ") || "",
+    basicMedicalHistory: patient?.basicMedicalHistory || "",
+    avatar: patient?.avatar || "",
   });
 
   if (!patient) {
@@ -78,6 +86,8 @@ export default function PatientProfilePage() {
     updateUser({
       ...formData,
       allergies: formData.allergies.split(",").map(a => a.trim()).filter(Boolean),
+      medicalConditions: formData.medicalConditions.split(",").map(c => c.trim()).filter(Boolean),
+      currentMedications: formData.currentMedications.split(",").map(m => m.trim()).filter(Boolean),
     });
     
     setIsSaving(false);
@@ -97,11 +107,40 @@ export default function PatientProfilePage() {
       gender: patient.gender || "",
       address: patient.address || "",
       emergencyContact: patient.emergencyContact || "",
+      emergencyPhone: patient.emergencyPhone || "",
+      weight: patient.weight || "",
+      height: patient.height || "",
       bloodType: patient.bloodType || "",
       allergies: patient.allergies?.join(", ") || "",
+      medicalConditions: patient.medicalConditions?.join(", ") || "",
+      currentMedications: patient.currentMedications?.join(", ") || "",
+      basicMedicalHistory: patient.basicMedicalHistory || "",
+      avatar: patient.avatar || "",
     });
     setIsEditing(false);
   };
+
+  const handleAvatarClick = () => {
+    avatarInputRef.current?.click();
+  };
+
+  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      if (!result) return;
+      setFormData(prev => ({
+        ...prev,
+        avatar: result,
+      }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const displayAvatar = isEditing ? (formData.avatar || patient.avatar) : patient.avatar;
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -136,9 +175,9 @@ export default function PatientProfilePage() {
         <div className="flex flex-col sm:flex-row items-center gap-6">
           <div className="relative">
             <div className="w-24 h-24 rounded-full bg-accent overflow-hidden">
-              {patient.avatar ? (
+              {displayAvatar ? (
                 <img 
-                  src={patient.avatar} 
+                  src={displayAvatar} 
                   alt={`${patient.firstName} ${patient.lastName}`}
                   className="w-full h-full object-cover"
                 />
@@ -149,9 +188,23 @@ export default function PatientProfilePage() {
               )}
             </div>
             {isEditing && (
-              <button className="absolute bottom-0 right-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center">
-                <Camera size={16} />
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={handleAvatarClick}
+                  className="absolute bottom-0 right-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center"
+                  aria-label="Upload profile photo"
+                >
+                  <Camera size={16} />
+                </button>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarChange}
+                />
+              </>
             )}
           </div>
           <div className="text-center sm:text-left">
@@ -227,6 +280,7 @@ export default function PatientProfilePage() {
                 type="tel"
                 value={formData.phone}
                 onChange={handleChange}
+                placeholder="+63 9XX XXX XXXX"
               />
             ) : (
               <p className="text-muted-foreground">{patient.phone || "Not provided"}</p>
@@ -304,6 +358,73 @@ export default function PatientProfilePage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
+              Emergency Contact Name
+            </label>
+            {isEditing ? (
+              <Input
+                name="emergencyContact"
+                value={formData.emergencyContact}
+                onChange={handleChange}
+                placeholder="Emergency contact name"
+              />
+            ) : (
+              <p className="text-muted-foreground">{patient.emergencyContact || "Not provided"}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              Emergency Contact Phone
+            </label>
+            {isEditing ? (
+              <Input
+                name="emergencyPhone"
+                type="tel"
+                value={formData.emergencyPhone}
+                onChange={handleChange}
+                placeholder="+63 9XX XXX XXXX"
+              />
+            ) : (
+              <p className="text-muted-foreground">{patient.emergencyPhone || "Not provided"}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              Weight (kg)
+            </label>
+            {isEditing ? (
+              <Input
+                name="weight"
+                type="number"
+                value={formData.weight}
+                onChange={handleChange}
+                placeholder="e.g., 65"
+              />
+            ) : (
+              <p className="text-muted-foreground">{patient.weight || "Not provided"}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              Height (cm)
+            </label>
+            {isEditing ? (
+              <Input
+                name="height"
+                type="number"
+                value={formData.height}
+                onChange={handleChange}
+                placeholder="e.g., 170"
+              />
+            ) : (
+              <p className="text-muted-foreground">{patient.height || "Not provided"}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">
               Blood Type
             </label>
             {isEditing ? (
@@ -328,22 +449,6 @@ export default function PatientProfilePage() {
             )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
-              Emergency Contact
-            </label>
-            {isEditing ? (
-              <Input
-                name="emergencyContact"
-                value={formData.emergencyContact}
-                onChange={handleChange}
-                placeholder="Name - Phone number"
-              />
-            ) : (
-              <p className="text-muted-foreground">{patient.emergencyContact || "Not provided"}</p>
-            )}
-          </div>
-
           <div className="sm:col-span-2">
             <label className="block text-sm font-medium text-foreground mb-1">
               Allergies
@@ -362,6 +467,69 @@ export default function PatientProfilePage() {
                   ? patient.allergies.join(", ")
                   : "None reported"
                 }
+              </p>
+            )}
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-foreground mb-1">
+              Existing Medical Conditions
+            </label>
+            {isEditing ? (
+              <textarea
+                name="medicalConditions"
+                value={formData.medicalConditions}
+                onChange={handleChange}
+                placeholder="Enter conditions separated by commas"
+                className="w-full px-4 py-3 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground resize-none h-20"
+              />
+            ) : (
+              <p className="text-muted-foreground">
+                {patient.medicalConditions?.length
+                  ? patient.medicalConditions.join(", ")
+                  : "None reported"
+                }
+              </p>
+            )}
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-foreground mb-1">
+              Current Medications
+            </label>
+            {isEditing ? (
+              <textarea
+                name="currentMedications"
+                value={formData.currentMedications}
+                onChange={handleChange}
+                placeholder="Enter medications separated by commas"
+                className="w-full px-4 py-3 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground resize-none h-20"
+              />
+            ) : (
+              <p className="text-muted-foreground">
+                {patient.currentMedications?.length
+                  ? patient.currentMedications.join(", ")
+                  : "None reported"
+                }
+              </p>
+            )}
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-foreground mb-1">
+              Basic Medical History
+            </label>
+            {isEditing ? (
+              <textarea
+                name="basicMedicalHistory"
+                value={formData.basicMedicalHistory}
+                onChange={handleChange}
+                placeholder="Describe past surgeries, chronic conditions, or major medical events"
+                className="w-full px-4 py-3 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground resize-none h-24"
+              />
+            ) : (
+              <p className="text-muted-foreground">
+                {patient.basicMedicalHistory || "Not provided"}
               </p>
             )}
           </div>
