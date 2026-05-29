@@ -786,16 +786,24 @@ const metroManilaLocations = [
   'Muntinlupa City', 'Las Piñas City', 'Marikina City', 'Caloocan City',
 ];
 
-// Add default values for location, acceptsInsurance, and contactNumber if missing
-const normalizedBaseDoctors = baseDoctors.map((doc, index) => ({
+type DoctorView = DoctorProfile & {
+  name: string;
+  specialty: string;
+};
+
+const normalizeDoctor = (doc: DoctorProfile, index: number): DoctorView => ({
   ...doc,
+  name: `${doc.firstName} ${doc.lastName}`,
+  specialty: doc.specialization,
   location: doc.location || metroManilaLocations[index % metroManilaLocations.length],
   acceptsInsurance: doc.acceptsInsurance !== undefined ? doc.acceptsInsurance : index % 3 !== 2,
   contactNumber: doc.contactNumber || `+63-2-8100-${String(index + 1).padStart(4, '0')}`,
-}));
+});
 
 // Combine base doctors with extended doctors
-export const doctors: DoctorProfile[] = [...normalizedBaseDoctors, ...extendedDoctors];
+export const doctors: DoctorView[] = [...baseDoctors, ...extendedDoctors].map((doc, index) =>
+  normalizeDoctor(doc, index)
+);
 
 // ============================================================================
 // Sample Patient Profile

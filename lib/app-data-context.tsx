@@ -1,32 +1,8 @@
-/**
- * ConsulTara TeleConsultation Platform - App Data Context
- * 
- * This context manages application data including appointments, medical records,
- * notifications, and messages. Uses localStorage for demo persistence.
- */
-
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import type { 
-  Appointment, 
-  MedicalRecord, 
-  Notification, 
-  Conversation, 
-  Message,
-  AppointmentStatus
-} from './types';
-import { 
-  sampleAppointments, 
-  sampleMedicalRecords, 
-  sampleNotifications, 
-  sampleConversations, 
-  sampleMessages 
-} from './data';
-
-// ============================================================================
-// Types
-// ============================================================================
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import type { Appointment, AppointmentStatus, Conversation, MedicalRecord, Message, Notification, Prescription } from './types';
+import { sampleAppointments, sampleConversations, sampleMedicalRecords, sampleMessages, sampleNotifications } from './data';
 
 interface AppDataState {
   appointments: Appointment[];
@@ -34,11 +10,11 @@ interface AppDataState {
   notifications: Notification[];
   conversations: Conversation[];
   messages: Message[];
+  prescriptions: Prescription[];
   isLoading: boolean;
 }
 
 interface AppDataContextType extends AppDataState {
-  // Appointment actions
   createAppointment: (appointment: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>) => Appointment;
   updateAppointment: (id: string, updates: Partial<Appointment>) => void;
   updateAppointmentStatus: (id: string, status: AppointmentStatus) => void;
@@ -46,45 +22,60 @@ interface AppDataContextType extends AppDataState {
   getAppointmentsByPatient: (patientId: string) => Appointment[];
   getAppointmentsByDoctor: (doctorId: string) => Appointment[];
   getUpcomingAppointments: (userId: string, role: 'patient' | 'doctor') => Appointment[];
-  
-  // Notification actions
   markNotificationAsRead: (id: string) => void;
   markAllNotificationsAsRead: (userId: string) => void;
   addNotification: (notification: Omit<Notification, 'id' | 'createdAt'>) => void;
   getUnreadCount: (userId: string) => number;
-  
-  // Message actions
   sendMessage: (conversationId: string, senderId: string, senderRole: 'patient' | 'doctor', content: string) => void;
+  addMessage: (message: Message) => void;
   getMessagesByConversation: (conversationId: string) => Message[];
   markMessagesAsRead: (conversationId: string, userId: string) => void;
   getOrCreateConversation: (patientId: string, doctorId: string) => Conversation;
-  
-  // Medical record actions
   addMedicalRecord: (record: Omit<MedicalRecord, 'id' | 'createdAt'>) => void;
   getMedicalRecordsByPatient: (patientId: string) => MedicalRecord[];
 }
 
-// ============================================================================
-// Context
-// ============================================================================
-
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
 
-// ============================================================================
-// Storage Keys
-// ============================================================================
+async function apiRequest<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(init?.headers || {}),
+    },
+    credentials: 'include',
+    cache: 'no-store',
+  });
 
-const STORAGE_KEYS = {
-  APPOINTMENTS: 'consultara_appointments',
-  MEDICAL_RECORDS: 'consultara_medical_records',
-  NOTIFICATIONS: 'consultara_notifications',
-  CONVERSATIONS: 'consultara_conversations',
-  MESSAGES: 'consultara_messages',
-};
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null) as { error?: string } | null;
+    throw new Error(payload?.error || 'Request failed');
+  }
 
-// ============================================================================
-// Provider Component
-// ============================================================================
+  return response.json() as Promise<T>;
+}
+
+function normalizeMessage(message: Message): Message {
+  const timestamp = message.timestamp || message.createdAt || new Date().toISOString();
+  return {
+    ...message,
+    senderRole: message.senderRole || message.senderType || 'patient',
+    senderType: message.senderType || message.senderRole,
+    isRead: message.isRead ?? message.read ?? false,
+    read: message.read ?? message.isRead ?? false,
+    createdAt: message.createdAt || timestamp,
+    timestamp,
+  };
+}
+
+function normalizeConversation(conversation: Conversation): Conversation {
+  return {
+    ...conversation,
+    patientId: conversation.patientId || conversation.participants.patientId,
+    doctorId: conversation.doctorId || conversation.participants.doctorId,
+  };
+}
 
 export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppDataState>({
@@ -93,25 +84,21 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     notifications: [],
     conversations: [],
     messages: [],
+    prescriptions: [],
     isLoading: true,
   });
 
-  // Load saved data on mount
   useEffect(() => {
-    const loadData = () => {
+    const loadData = async () => {
       try {
-        const savedAppointments = localStorage.getItem(STORAGE_KEYS.APPOINTMENTS);
-        const savedMedicalRecords = localStorage.getItem(STORAGE_KEYS.MEDICAL_RECORDS);
-        const savedNotifications = localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS);
-        const savedConversations = localStorage.getItem(STORAGE_KEYS.CONVERSATIONS);
-        const savedMessages = localStorage.getItem(STORAGE_KEYS.MESSAGES);
-
+        const response = await apiRequest<Pick<AppDataState, 'appointments' | 'medicalRecords' | 'notifications' | 'conversations' | 'messages' | 'prescriptions'>>('/api/state');
         setState({
-          appointments: savedAppointments ? JSON.parse(savedAppointments) : sampleAppointments,
-          medicalRecords: savedMedicalRecords ? JSON.parse(savedMedicalRecords) : sampleMedicalRecords,
-          notifications: savedNotifications ? JSON.parse(savedNotifications) : sampleNotifications,
-          conversations: savedConversations ? JSON.parse(savedConversations) : sampleConversations,
-          messages: savedMessages ? JSON.parse(savedMessages) : sampleMessages,
+          appointments: response.appointments,
+          medicalRecords: response.medicalRecords,
+          notifications: response.notifications,
+          conversations: response.conversations.map(normalizeConversation),
+          messages: response.messages.map(normalizeMessage),
+          prescriptions: response.prescriptions,
           isLoading: false,
         });
       } catch (error) {
@@ -120,43 +107,37 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           appointments: sampleAppointments,
           medicalRecords: sampleMedicalRecords,
           notifications: sampleNotifications,
-          conversations: sampleConversations,
-          messages: sampleMessages,
+          conversations: sampleConversations.map(normalizeConversation),
+          messages: sampleMessages.map(normalizeMessage),
+          prescriptions: sampleMedicalRecords
+            .map(record => record.prescription)
+            .filter((prescription): prescription is Prescription => Boolean(prescription)),
           isLoading: false,
         });
       }
     };
 
-    loadData();
+    void loadData();
   }, []);
 
-  // Save data whenever it changes
-  useEffect(() => {
-    if (!state.isLoading) {
-      localStorage.setItem(STORAGE_KEYS.APPOINTMENTS, JSON.stringify(state.appointments));
-      localStorage.setItem(STORAGE_KEYS.MEDICAL_RECORDS, JSON.stringify(state.medicalRecords));
-      localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(state.notifications));
-      localStorage.setItem(STORAGE_KEYS.CONVERSATIONS, JSON.stringify(state.conversations));
-      localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(state.messages));
-    }
-  }, [state]);
-
-  // ============================================================================
-  // Appointment Actions
-  // ============================================================================
-
-  const createAppointment = useCallback((appointmentData: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>): Appointment => {
+  const createAppointment = useCallback((appointmentData: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
     const newAppointment: Appointment = {
       ...appointmentData,
       id: `apt-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      type: appointmentData.type || appointmentData.consultationType,
+      time: appointmentData.time || appointmentData.timeSlot.startTime,
+      reason: appointmentData.reason || appointmentData.symptoms || 'General Consultation',
+      createdAt: now,
+      updatedAt: now,
     };
 
-    setState(prev => ({
-      ...prev,
-      appointments: [...prev.appointments, newAppointment],
-    }));
+    setState(prev => ({ ...prev, appointments: [...prev.appointments, newAppointment] }));
+
+    void apiRequest('/api/state', {
+      method: 'POST',
+      body: JSON.stringify({ resource: 'appointments', action: 'create', appointment: newAppointment }),
+    });
 
     return newAppointment;
   }, []);
@@ -164,60 +145,62 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const updateAppointment = useCallback((id: string, updates: Partial<Appointment>) => {
     setState(prev => ({
       ...prev,
-      appointments: prev.appointments.map(apt =>
-        apt.id === id
-          ? { ...apt, ...updates, updatedAt: new Date().toISOString() }
-          : apt
+      appointments: prev.appointments.map(appointment =>
+        appointment.id === id ? { ...appointment, ...updates, updatedAt: new Date().toISOString() } : appointment
       ),
     }));
-  }, []);
 
-  const cancelAppointment = useCallback((id: string) => {
-    updateAppointment(id, { status: 'cancelled' as AppointmentStatus });
-  }, [updateAppointment]);
+    void apiRequest('/api/state', {
+      method: 'PATCH',
+      body: JSON.stringify({ resource: 'appointments', action: 'update', id, updates }),
+    });
+  }, []);
 
   const updateAppointmentStatus = useCallback((id: string, status: AppointmentStatus) => {
     updateAppointment(id, { status });
   }, [updateAppointment]);
 
-  const getAppointmentsByPatient = useCallback((patientId: string): Appointment[] => {
-    return state.appointments.filter(apt => apt.patientId === patientId);
-  }, [state.appointments]);
+  const cancelAppointment = useCallback((id: string) => {
+    updateAppointment(id, { status: 'cancelled' });
+  }, [updateAppointment]);
 
-  const getAppointmentsByDoctor = useCallback((doctorId: string): Appointment[] => {
-    return state.appointments.filter(apt => apt.doctorId === doctorId);
-  }, [state.appointments]);
+  const getAppointmentsByPatient = useCallback((patientId: string) => state.appointments.filter(appointment => appointment.patientId === patientId), [state.appointments]);
+  const getAppointmentsByDoctor = useCallback((doctorId: string) => state.appointments.filter(appointment => appointment.doctorId === doctorId), [state.appointments]);
 
-  const getUpcomingAppointments = useCallback((userId: string, role: 'patient' | 'doctor'): Appointment[] => {
+  const getUpcomingAppointments = useCallback((userId: string, role: 'patient' | 'doctor') => {
     const today = new Date().toISOString().split('T')[0];
-    return state.appointments.filter(apt => {
-      const isRelevant = role === 'patient' ? apt.patientId === userId : apt.doctorId === userId;
-      const isFuture = apt.date >= today;
-      const isActive = apt.status === 'pending' || apt.status === 'confirmed';
-      return isRelevant && isFuture && isActive;
-    }).sort((a, b) => a.date.localeCompare(b.date));
+    return state.appointments
+      .filter(appointment => {
+        const matchesRole = role === 'patient' ? appointment.patientId === userId : appointment.doctorId === userId;
+        const isFuture = appointment.date >= today;
+        const isActive = appointment.status === 'pending' || appointment.status === 'confirmed';
+        return matchesRole && isFuture && isActive;
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
   }, [state.appointments]);
-
-  // ============================================================================
-  // Notification Actions
-  // ============================================================================
 
   const markNotificationAsRead = useCallback((id: string) => {
     setState(prev => ({
       ...prev,
-      notifications: prev.notifications.map(notif =>
-        notif.id === id ? { ...notif, isRead: true } : notif
-      ),
+      notifications: prev.notifications.map(notification => notification.id === id ? { ...notification, isRead: true } : notification),
     }));
+
+    void apiRequest('/api/state', {
+      method: 'PATCH',
+      body: JSON.stringify({ resource: 'notifications', action: 'markRead', id }),
+    });
   }, []);
 
   const markAllNotificationsAsRead = useCallback((userId: string) => {
     setState(prev => ({
       ...prev,
-      notifications: prev.notifications.map(notif =>
-        notif.userId === userId ? { ...notif, isRead: true } : notif
-      ),
+      notifications: prev.notifications.map(notification => notification.userId === userId ? { ...notification, isRead: true } : notification),
     }));
+
+    void apiRequest('/api/state', {
+      method: 'PATCH',
+      body: JSON.stringify({ resource: 'notifications', action: 'markAllRead', userId }),
+    });
   }, []);
 
   const addNotification = useCallback((notification: Omit<Notification, 'id' | 'createdAt'>) => {
@@ -227,118 +210,122 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       createdAt: new Date().toISOString(),
     };
 
-    setState(prev => ({
-      ...prev,
-      notifications: [newNotification, ...prev.notifications],
-    }));
+    setState(prev => ({ ...prev, notifications: [newNotification, ...prev.notifications] }));
+
+    void apiRequest('/api/state', {
+      method: 'POST',
+      body: JSON.stringify({ resource: 'notifications', action: 'add', notification: newNotification }),
+    });
   }, []);
 
-  const getUnreadCount = useCallback((userId: string): number => {
-    return state.notifications.filter(n => n.userId === userId && !n.isRead).length;
-  }, [state.notifications]);
+  const getUnreadCount = useCallback((userId: string) => state.notifications.filter(notification => notification.userId === userId && !notification.isRead).length, [state.notifications]);
 
-  // ============================================================================
-  // Message Actions
-  // ============================================================================
+  const addMessage = useCallback((message: Message) => {
+    const normalizedMessage = normalizeMessage(message);
+
+    setState(prev => ({
+      ...prev,
+      messages: [...prev.messages, normalizedMessage],
+      conversations: prev.conversations.map(conversation =>
+        conversation.id === normalizedMessage.conversationId
+          ? { ...conversation, lastMessage: normalizedMessage, unreadCount: conversation.unreadCount + 1, updatedAt: normalizedMessage.createdAt }
+          : conversation
+      ),
+    }));
+
+    void apiRequest('/api/state', {
+      method: 'POST',
+      body: JSON.stringify({ resource: 'messages', action: 'add', message: normalizedMessage }),
+    });
+  }, []);
 
   const sendMessage = useCallback((conversationId: string, senderId: string, senderRole: 'patient' | 'doctor', content: string) => {
-    const newMessage: Message = {
+    addMessage({
       id: `msg-${Date.now()}`,
       conversationId,
       senderId,
       senderRole,
+      senderType: senderRole,
       content,
       isRead: false,
+      read: false,
       createdAt: new Date().toISOString(),
-    };
+      timestamp: new Date().toISOString(),
+    });
+  }, [addMessage]);
 
-    setState(prev => ({
-      ...prev,
-      messages: [...prev.messages, newMessage],
-      conversations: prev.conversations.map(conv =>
-        conv.id === conversationId
-          ? {
-              ...conv,
-              lastMessage: newMessage,
-              unreadCount: conv.unreadCount + 1,
-              updatedAt: new Date().toISOString(),
-            }
-          : conv
-      ),
-    }));
-  }, []);
-
-  const getMessagesByConversation = useCallback((conversationId: string): Message[] => {
+  const getMessagesByConversation = useCallback((conversationId: string) => {
     return state.messages
-      .filter(msg => msg.conversationId === conversationId)
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      .filter(message => message.conversationId === conversationId)
+      .sort((a, b) => (a.createdAt || a.timestamp || '').localeCompare(b.createdAt || b.timestamp || ''));
   }, [state.messages]);
 
   const markMessagesAsRead = useCallback((conversationId: string, userId: string) => {
     setState(prev => ({
       ...prev,
-      messages: prev.messages.map(msg =>
-        msg.conversationId === conversationId && msg.senderId !== userId
-          ? { ...msg, isRead: true }
-          : msg
+      messages: prev.messages.map(message =>
+        message.conversationId === conversationId && message.senderId !== userId ? { ...message, isRead: true, read: true } : message
       ),
-      conversations: prev.conversations.map(conv =>
-        conv.id === conversationId
-          ? { ...conv, unreadCount: 0 }
-          : conv
-      ),
+      conversations: prev.conversations.map(conversation => conversation.id === conversationId ? { ...conversation, unreadCount: 0 } : conversation),
     }));
+
+    void apiRequest('/api/state', {
+      method: 'PATCH',
+      body: JSON.stringify({ resource: 'messages', action: 'markRead', conversationId, userId }),
+    });
   }, []);
 
-  const getOrCreateConversation = useCallback((patientId: string, doctorId: string): Conversation => {
-    const existing = state.conversations.find(
-      conv => conv.participants.patientId === patientId && conv.participants.doctorId === doctorId
-    );
-
+  const getOrCreateConversation = useCallback((patientId: string, doctorId: string) => {
+    const existing = state.conversations.find(conversation => conversation.participants.patientId === patientId && conversation.participants.doctorId === doctorId);
     if (existing) return existing;
 
+    const now = new Date().toISOString();
     const newConversation: Conversation = {
       id: `conv-${Date.now()}`,
       participants: { patientId, doctorId },
+      patientId,
+      doctorId,
       unreadCount: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: now,
+      updatedAt: now,
     };
 
-    setState(prev => ({
-      ...prev,
-      conversations: [...prev.conversations, newConversation],
-    }));
+    setState(prev => ({ ...prev, conversations: [...prev.conversations, newConversation] }));
+
+    void apiRequest('/api/state', {
+      method: 'POST',
+      body: JSON.stringify({ resource: 'conversations', action: 'create', conversation: newConversation }),
+    });
 
     return newConversation;
   }, [state.conversations]);
-
-  // ============================================================================
-  // Medical Record Actions
-  // ============================================================================
 
   const addMedicalRecord = useCallback((record: Omit<MedicalRecord, 'id' | 'createdAt'>) => {
     const newRecord: MedicalRecord = {
       ...record,
       id: `record-${Date.now()}`,
+      title: record.title || record.diagnosis,
+      type: record.type || 'consultation',
       createdAt: new Date().toISOString(),
     };
+
+    const newPrescription = newRecord.prescription
+      ? { ...newRecord.prescription, patientId: newRecord.patientId, doctorId: newRecord.doctorId }
+      : null;
 
     setState(prev => ({
       ...prev,
       medicalRecords: [...prev.medicalRecords, newRecord],
+      prescriptions: newPrescription ? [...prev.prescriptions, newPrescription] : prev.prescriptions,
     }));
+
+    void apiRequest('/api/state', {
+      method: 'POST',
+      body: JSON.stringify({ resource: 'medicalRecords', action: 'add', record: newRecord }),
+    });
   }, []);
 
-  const getMedicalRecordsByPatient = useCallback((patientId: string): MedicalRecord[] => {
-    return state.medicalRecords
-      .filter(record => record.patientId === patientId)
-      .sort((a, b) => b.date.localeCompare(a.date));
-  }, [state.medicalRecords]);
-
-  // ============================================================================
-  // Context Value
-  // ============================================================================
+  const getMedicalRecordsByPatient = useCallback((patientId: string) => state.medicalRecords.filter(record => record.patientId === patientId).sort((a, b) => b.date.localeCompare(a.date)), [state.medicalRecords]);
 
   const value: AppDataContextType = {
     ...state,
@@ -354,6 +341,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     addNotification,
     getUnreadCount,
     sendMessage,
+    addMessage,
     getMessagesByConversation,
     markMessagesAsRead,
     getOrCreateConversation,
@@ -361,16 +349,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     getMedicalRecordsByPatient,
   };
 
-  return (
-    <AppDataContext.Provider value={value}>
-      {children}
-    </AppDataContext.Provider>
-  );
+  return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;
 }
-
-// ============================================================================
-// Hook
-// ============================================================================
 
 export function useAppData() {
   const context = useContext(AppDataContext);

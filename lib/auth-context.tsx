@@ -9,7 +9,6 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { User, UserRole, PatientProfile, DoctorProfile } from './types';
-import { samplePatient, doctors } from './data';
 
 // ============================================================================
 // Types
@@ -26,12 +25,13 @@ interface AuthState {
 interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signUp: (email: string, password: string, role: UserRole) => Promise<{ success: boolean; error?: string }>;
-  signOut: () => void;
-  logout: () => void;
-  selectRole: (role: UserRole) => void;
-  updatePatientProfile: (profile: Partial<PatientProfile>) => void;
-  updateDoctorProfile: (profile: Partial<DoctorProfile>) => void;
-  completeRegistration: (profileData: Partial<PatientProfile> | Partial<DoctorProfile>) => void;
+  signOut: () => Promise<void>;
+  logout: () => Promise<void>;
+  selectRole: (role: UserRole) => Promise<void>;
+  updatePatientProfile: (profile: Partial<PatientProfile>) => Promise<void>;
+  updateDoctorProfile: (profile: Partial<DoctorProfile>) => Promise<void>;
+  updateUser: (profile: Partial<PatientProfile> | Partial<DoctorProfile>) => Promise<void>;
+  completeRegistration: (profileData: Partial<PatientProfile> | Partial<DoctorProfile>) => Promise<void>;
 }
 
 // ============================================================================
@@ -51,6 +51,25 @@ const STORAGE_KEYS = {
   PENDING_ROLE: 'consultara_pending_role',
 };
 
+async function apiRequest<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(init?.headers || {}),
+    },
+    credentials: 'include',
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null) as { error?: string } | null;
+    throw new Error(payload?.error || 'Request failed');
+  }
+
+  return response.json() as Promise<T>;
+}
+
 // ============================================================================
 // Provider Component
 // ============================================================================
@@ -66,171 +85,89 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Load saved auth state on mount
   useEffect(() => {
-    const loadAuthState = () => {
+    const loadAuthState = async () => {
       try {
-        const savedUser = localStorage.getItem(STORAGE_KEYS.USER);
-        const savedPatientProfile = localStorage.getItem(STORAGE_KEYS.PATIENT_PROFILE);
-        const savedDoctorProfile = localStorage.getItem(STORAGE_KEYS.DOCTOR_PROFILE);
+        const response = await apiRequest<{ user: User | null; patientProfile: PatientProfile | null; doctorProfile: DoctorProfile | null; isAuthenticated: boolean }>('/api/session');
 
-        if (savedUser) {
-          const user = JSON.parse(savedUser) as User;
-          const patientProfile = savedPatientProfile ? JSON.parse(savedPatientProfile) as PatientProfile : null;
-          const doctorProfile = savedDoctorProfile ? JSON.parse(savedDoctorProfile) as DoctorProfile : null;
-
-          setState({
-            user,
-            patientProfile,
-            doctorProfile,
-            isLoading: false,
-            isAuthenticated: true,
-          });
-        } else {
-          setState(prev => ({ ...prev, isLoading: false }));
-        }
+        setState({
+          user: response.user,
+          patientProfile: response.patientProfile,
+          doctorProfile: response.doctorProfile,
+          isLoading: false,
+          isAuthenticated: response.isAuthenticated,
+        });
       } catch (error) {
         console.error('Error loading auth state:', error);
         setState(prev => ({ ...prev, isLoading: false }));
       }
     };
 
-    loadAuthState();
+    void loadAuthState();
   }, []);
 
   // Sign in function
   const signIn = useCallback(async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 500));
+    try {
+      const result = await apiRequest<{ success: boolean; error?: string; user?: User; patientProfile?: PatientProfile | null; doctorProfile?: DoctorProfile | null }>('/api/session', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'signin', email, password }),
+      });
 
-    // Check if this email belongs to a doctor in the system
-    const existingDoctor = doctors.find(d => d.email.toLowerCase() === email.toLowerCase());
-    
-    if (existingDoctor) {
-      // Sign in as existing doctor
-      const user: User = {
-        id: existingDoctor.userId,
-        email: existingDoctor.email,
-        role: 'doctor',
-        createdAt: new Date().toISOString(),
-      };
+      if (!result.success || !result.user) {
+        return { success: false, error: result.error || 'Sign in failed' };
+      }
 
-      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
-      localStorage.setItem(STORAGE_KEYS.DOCTOR_PROFILE, JSON.stringify(existingDoctor));
+      localStorage.setItem(STORAGE_KEYS.PENDING_ROLE, 'true');
 
       setState({
-        user,
-        patientProfile: null,
-        doctorProfile: existingDoctor,
+        user: result.user,
+        patientProfile: result.patientProfile || null,
+        doctorProfile: result.doctorProfile || null,
         isLoading: false,
         isAuthenticated: true,
       });
 
       return { success: true };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Sign in failed' };
     }
-
-    // Check for ALL registered users in localStorage (both patient and doctor)
-    const allUserKeys = Object.keys(localStorage).filter(key => key.startsWith('consultara_user_'));
-    
-    // Also check the main user storage
-    const savedUser = localStorage.getItem(STORAGE_KEYS.USER);
-    
-    // Check registered users
-    for (const key of allUserKeys) {
-      try {
-        const storedUser = JSON.parse(localStorage.getItem(key) || '{}');
-        if (storedUser.email?.toLowerCase() === email.toLowerCase()) {
-          const user: User = storedUser;
-          localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
-          
-          // Load associated profile
-          const patientProfileKey = `consultara_patient_${user.id}`;
-          const doctorProfileKey = `consultara_doctor_${user.id}`;
-          const patientProfile = localStorage.getItem(patientProfileKey) 
-            ? JSON.parse(localStorage.getItem(patientProfileKey)!) 
-            : localStorage.getItem(STORAGE_KEYS.PATIENT_PROFILE) 
-              ? JSON.parse(localStorage.getItem(STORAGE_KEYS.PATIENT_PROFILE)!) 
-              : null;
-          const doctorProfile = localStorage.getItem(doctorProfileKey) 
-            ? JSON.parse(localStorage.getItem(doctorProfileKey)!) 
-            : localStorage.getItem(STORAGE_KEYS.DOCTOR_PROFILE) 
-              ? JSON.parse(localStorage.getItem(STORAGE_KEYS.DOCTOR_PROFILE)!) 
-              : null;
-
-          setState({
-            user,
-            patientProfile: user.role === 'patient' ? patientProfile : null,
-            doctorProfile: user.role === 'doctor' ? doctorProfile : null,
-            isLoading: false,
-            isAuthenticated: true,
-          });
-
-          return { success: true };
-        }
-      } catch (e) {
-        console.error('Error parsing stored user:', e);
-      }
-    }
-
-    // Check main storage as fallback
-    if (savedUser) {
-      const user = JSON.parse(savedUser) as User;
-      if (user.email.toLowerCase() === email.toLowerCase()) {
-        const patientProfile = localStorage.getItem(STORAGE_KEYS.PATIENT_PROFILE);
-        const doctorProfile = localStorage.getItem(STORAGE_KEYS.DOCTOR_PROFILE);
-
-        setState({
-          user,
-          patientProfile: patientProfile ? JSON.parse(patientProfile) : null,
-          doctorProfile: doctorProfile ? JSON.parse(doctorProfile) : null,
-          isLoading: false,
-          isAuthenticated: true,
-        });
-
-        return { success: true };
-      }
-    }
-
-    // No account found - show error message prompting user to sign up
-    return { 
-      success: false, 
-      error: 'No account found with this email. Please sign up first to create an account.' 
-    };
   }, []);
 
   // Sign up function
   const signUp = useCallback(async (email: string, password: string, role: UserRole): Promise<{ success: boolean; error?: string }> => {
-    await new Promise(resolve => setTimeout(resolve, 500));
+    try {
+      const result = await apiRequest<{ success: boolean; error?: string; user?: User }>('/api/session', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'signup', email, password, role }),
+      });
 
-    const user: User = {
-      id: `user-${Date.now()}`,
-      email,
-      role,
-      createdAt: new Date().toISOString(),
-    };
+      if (!result.success || !result.user) {
+        return { success: false, error: result.error || 'Sign up failed' };
+      }
 
-    // Store user in main storage
-    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
-    
-    // Also store in indexed storage for retrieval during sign-in
-    localStorage.setItem(`consultara_user_${user.id}`, JSON.stringify(user));
+      setState(prev => ({
+        ...prev,
+        user: result.user || null,
+        patientProfile: null,
+        doctorProfile: null,
+        isLoading: false,
+        isAuthenticated: true,
+      }));
 
-    setState({
-      user,
-      patientProfile: null,
-      doctorProfile: null,
-      isLoading: false,
-      isAuthenticated: true,
-    });
-
-    return { success: true };
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Sign up failed' };
+    }
   }, []);
 
   // Sign out function
-  const signOut = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEYS.USER);
-    localStorage.removeItem(STORAGE_KEYS.PATIENT_PROFILE);
-    localStorage.removeItem(STORAGE_KEYS.DOCTOR_PROFILE);
-    localStorage.removeItem(STORAGE_KEYS.PENDING_ROLE);
+  const signOut = useCallback(async () => {
+    await apiRequest('/api/session', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'signout' }),
+    });
 
+    localStorage.removeItem(STORAGE_KEYS.PENDING_ROLE);
     setState({
       user: null,
       patientProfile: null,
@@ -241,163 +178,74 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Select role after sign in
-  const selectRole = useCallback((role: UserRole) => {
+  const selectRole = useCallback(async (role: UserRole) => {
     if (!state.user) return;
 
-    const updatedUser: User = {
-      ...state.user,
-      role,
-    };
+    const result = await apiRequest<{ user: User; patientProfile: PatientProfile | null; doctorProfile: DoctorProfile | null }>('/api/session', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'selectRole', role }),
+    });
 
-    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
     localStorage.removeItem(STORAGE_KEYS.PENDING_ROLE);
-
-    // For demo purposes, if selecting patient, pre-populate with sample data
-    if (role === 'patient') {
-      const patientProfile: PatientProfile = {
-        ...samplePatient,
-        id: `patient-${Date.now()}`,
-        userId: updatedUser.id,
-        email: updatedUser.email,
-        firstName: '',
-        lastName: '',
-      };
-      localStorage.setItem(STORAGE_KEYS.PATIENT_PROFILE, JSON.stringify(patientProfile));
-
-      setState(prev => ({
-        ...prev,
-        user: updatedUser,
-        patientProfile,
-      }));
-    } else {
-      setState(prev => ({
-        ...prev,
-        user: updatedUser,
-      }));
-    }
-  }, [state.user]);
+    setState(prev => ({
+      ...prev,
+      user: result.user,
+      patientProfile: result.patientProfile,
+      doctorProfile: result.doctorProfile,
+    }));
+  }, []);
 
   // Update patient profile
-  const updatePatientProfile = useCallback((profile: Partial<PatientProfile>) => {
-    setState(prev => {
-      if (!prev.patientProfile) return prev;
-
-      const updatedProfile: PatientProfile = {
-        ...prev.patientProfile,
-        ...profile,
-        updatedAt: new Date().toISOString(),
-      };
-
-      localStorage.setItem(STORAGE_KEYS.PATIENT_PROFILE, JSON.stringify(updatedProfile));
-
-      return {
-        ...prev,
-        patientProfile: updatedProfile,
-      };
+  const updatePatientProfile = useCallback(async (profile: Partial<PatientProfile>) => {
+    const result = await apiRequest<{ user: User; patientProfile: PatientProfile | null }>('/api/session', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'updatePatientProfile', profile }),
     });
+
+    setState(prev => ({
+      ...prev,
+      user: result.user,
+      patientProfile: result.patientProfile,
+    }));
   }, []);
 
   // Update doctor profile
-  const updateDoctorProfile = useCallback((profile: Partial<DoctorProfile>) => {
-    setState(prev => {
-      if (!prev.doctorProfile) return prev;
-
-      const updatedProfile: DoctorProfile = {
-        ...prev.doctorProfile,
-        ...profile,
-        updatedAt: new Date().toISOString(),
-      };
-
-      localStorage.setItem(STORAGE_KEYS.DOCTOR_PROFILE, JSON.stringify(updatedProfile));
-
-      return {
-        ...prev,
-        doctorProfile: updatedProfile,
-      };
+  const updateDoctorProfile = useCallback(async (profile: Partial<DoctorProfile>) => {
+    const result = await apiRequest<{ user: User; doctorProfile: DoctorProfile | null }>('/api/session', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'updateDoctorProfile', profile }),
     });
+
+    setState(prev => ({
+      ...prev,
+      user: result.user,
+      doctorProfile: result.doctorProfile,
+    }));
   }, []);
 
-  // Complete registration with profile data
-  const completeRegistration = useCallback((profileData: Partial<PatientProfile> | Partial<DoctorProfile>) => {
-    if (!state.user) return;
-
-    if (state.user.role === 'patient') {
-      const patientProfile: PatientProfile = {
-        id: `patient-${Date.now()}`,
-        userId: state.user.id,
-        email: state.user.email,
-        firstName: '',
-        lastName: '',
-        phone: '',
-        dateOfBirth: '',
-        gender: 'prefer-not-to-say',
-        address: '',
-        city: '',
-        state: '',
-        zipCode: '',
-        emergencyContact: '',
-        emergencyPhone: '',
-        weight: '',
-        height: '',
-        basicMedicalHistory: '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        ...(profileData as Partial<PatientProfile>),
-      };
-
-      localStorage.setItem(STORAGE_KEYS.PATIENT_PROFILE, JSON.stringify(patientProfile));
-      // Also store indexed for retrieval
-      localStorage.setItem(`consultara_patient_${state.user.id}`, JSON.stringify(patientProfile));
-
-      setState(prev => ({
-        ...prev,
-        patientProfile,
-      }));
-    } else {
-      const doctorProfile: DoctorProfile = {
-        id: `doctor-${Date.now()}`,
-        userId: state.user.id,
-        email: state.user.email,
-        firstName: '',
-        lastName: '',
-        phone: '',
-        specialization: '',
-        department: 'general-medicine',
-        licenseNumber: '',
-        yearsOfExperience: 0,
-        education: '',
-        bio: '',
-        consultationFee: 500,
-        avatar: '',
-        availability: {
-          monday: { isWorkingDay: true, slots: [] },
-          tuesday: { isWorkingDay: true, slots: [] },
-          wednesday: { isWorkingDay: true, slots: [] },
-          thursday: { isWorkingDay: true, slots: [] },
-          friday: { isWorkingDay: true, slots: [] },
-          saturday: { isWorkingDay: false, slots: [] },
-          sunday: { isWorkingDay: false, slots: [] },
-        },
-        languages: ['English', 'Filipino'],
-        rating: 0,
-        totalReviews: 0,
-        isAvailable: true,
-        location: 'Metro Manila',
-        acceptsInsurance: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        ...(profileData as Partial<DoctorProfile>),
-      };
-
-      localStorage.setItem(STORAGE_KEYS.DOCTOR_PROFILE, JSON.stringify(doctorProfile));
-      // Also store indexed for retrieval
-      localStorage.setItem(`consultara_doctor_${state.user.id}`, JSON.stringify(doctorProfile));
-
-      setState(prev => ({
-        ...prev,
-        doctorProfile,
-      }));
+  const updateUser = useCallback(async (profile: Partial<PatientProfile> | Partial<DoctorProfile>) => {
+    if (state.user?.role === 'patient') {
+      await updatePatientProfile(profile as Partial<PatientProfile>);
+      return;
     }
+
+    await updateDoctorProfile(profile as Partial<DoctorProfile>);
+  }, [state.user?.role, updatePatientProfile, updateDoctorProfile]);
+
+  // Complete registration with profile data
+  const completeRegistration = useCallback(async (profileData: Partial<PatientProfile> | Partial<DoctorProfile>) => {
+    const result = await apiRequest<{ user: User; patientProfile: PatientProfile | null; doctorProfile: DoctorProfile | null }>('/api/session', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'completeRegistration', profileData }),
+    });
+
+    localStorage.removeItem(STORAGE_KEYS.PENDING_ROLE);
+    setState(prev => ({
+      ...prev,
+      user: result.user,
+      patientProfile: result.patientProfile,
+      doctorProfile: result.doctorProfile,
+    }));
   }, [state.user]);
 
   const value: AuthContextType = {
@@ -409,6 +257,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     selectRole,
     updatePatientProfile,
     updateDoctorProfile,
+    updateUser,
     completeRegistration,
   };
 

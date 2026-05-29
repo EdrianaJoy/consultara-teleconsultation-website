@@ -16,7 +16,43 @@ export interface User {
   email: string;
   role: UserRole;
   createdAt: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  dateOfBirth?: string;
+  gender?: 'male' | 'female' | 'other' | 'prefer-not-to-say';
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  emergencyContact?: string;
+  emergencyPhone?: string;
+  bloodType?: string;
+  allergies?: string[];
+  medicalConditions?: string[];
+  currentMedications?: string[];
+  basicMedicalHistory?: string;
+  specialization?: string;
+  specialty?: string;
+  department?: Department;
+  licenseNumber?: string;
+  yearsOfExperience?: number;
+  education?: string;
+  bio?: string;
+  consultationFee?: number;
+  avatar?: string;
+  availability?: WeeklySchedule;
+  languages?: string[];
+  rating?: number;
+  totalReviews?: number;
+  isAvailable?: boolean;
+  location?: string;
+  acceptsInsurance?: boolean;
 }
+
+export type PatientUser = User & PatientProfile;
+export type DoctorUser = User & DoctorProfile;
 
 export interface PatientProfile {
   id: string;
@@ -53,6 +89,8 @@ export interface DoctorProfile {
   email: string;
   phone: string;
   specialization: string;
+  specialty?: string;
+  name?: string;
   department: Department;
   licenseNumber: string;
   yearsOfExperience: number;
@@ -151,6 +189,9 @@ export interface Appointment {
   date: string;         // YYYY-MM-DD format
   timeSlot: TimeSlot;
   consultationType: ConsultationType;
+  type?: ConsultationType;
+  time?: string;
+  reason?: string;
   status: AppointmentStatus;
   symptoms?: string;
   notes?: string;
@@ -181,6 +222,8 @@ export interface Consultation {
 export interface Prescription {
   id: string;
   consultationId: string;
+  patientId?: string;
+  doctorId?: string;
   medications: Medication[];
   instructions: string;
   validUntil: string;
@@ -214,6 +257,8 @@ export interface MedicalRecord {
   doctorId: string;
   doctorName: string;
   date: string;
+  title?: string;
+  type?: 'consultation' | 'prescription' | 'lab_result';
   diagnosis: string;
   symptoms: string[];
   treatment: string;
@@ -234,10 +279,13 @@ export interface Message {
   conversationId: string;
   senderId: string;
   senderRole: UserRole;
+  senderType?: UserRole;
   content: string;
   attachments?: Attachment[];
   isRead: boolean;
+  read?: boolean;
   createdAt: string;
+  timestamp?: string;
 }
 
 export interface Conversation {
@@ -246,6 +294,8 @@ export interface Conversation {
     patientId: string;
     doctorId: string;
   };
+  patientId?: string;
+  doctorId?: string;
   lastMessage?: Message;
   unreadCount: number;
   createdAt: string;

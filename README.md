@@ -20,9 +20,27 @@ yarn dev
 pnpm dev
 ```
 
+If it doesn't open automatically, try:
+npm install
+npm run dev
+
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+
+## Backend and Data
+
+This version uses a SQLite-backed API layer for authentication, appointments, messages, medical records, notifications, and prescriptions. The database is seeded from the existing demo data so the site works immediately after install.
+
+Demo sign-in password for seeded accounts: `Consultara123!`
+
+## Build
+
+The production build is now available with:
+
+```bash
+npm run build
+```
 
 ## Learn More
 

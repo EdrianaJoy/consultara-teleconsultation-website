@@ -181,7 +181,7 @@ export default function SignUpPage() {
               consultationFee: Number(consultationFee),
             };
 
-        completeRegistration(profileData);
+        await completeRegistration(profileData);
         
         toast.success('Account created successfully!');
         router.push(role === 'patient' ? '/patient/dashboard' : '/doctor/dashboard');

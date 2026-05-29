@@ -56,7 +56,7 @@ export default function DoctorConsultationsPage() {
   const [dateFilter, setDateFilter] = useState("");
 
   // Get doctor's consultations
-  const doctorConsultations = appointments.filter(apt => apt.doctorId === user?.id);
+  const doctorConsultations = appointments.filter((apt: (typeof appointments)[number]) => apt.doctorId === user?.id);
 
   // Filter consultations
   let filteredConsultations = [...doctorConsultations];
@@ -83,15 +83,17 @@ export default function DoctorConsultationsPage() {
   filteredConsultations.sort((a, b) => {
     const dateCompare = b.date.localeCompare(a.date);
     if (dateCompare !== 0) return dateCompare;
-    return b.time.localeCompare(a.time);
+    const timeA = a.time || '00:00';
+    const timeB = b.time || '00:00';
+    return timeB.localeCompare(timeA);
   });
 
   const tabs: { id: FilterTab; label: string; count: number }[] = [
     { id: "all", label: "All", count: doctorConsultations.length },
-    { id: "pending", label: "Pending", count: doctorConsultations.filter(c => c.status === "pending").length },
-    { id: "confirmed", label: "Confirmed", count: doctorConsultations.filter(c => c.status === "confirmed").length },
-    { id: "completed", label: "Completed", count: doctorConsultations.filter(c => c.status === "completed").length },
-    { id: "cancelled", label: "Cancelled", count: doctorConsultations.filter(c => c.status === "cancelled").length },
+    { id: "pending", label: "Pending", count: doctorConsultations.filter((c: (typeof doctorConsultations)[number]) => c.status === "pending").length },
+    { id: "confirmed", label: "Confirmed", count: doctorConsultations.filter((c: (typeof doctorConsultations)[number]) => c.status === "confirmed").length },
+    { id: "completed", label: "Completed", count: doctorConsultations.filter((c: (typeof doctorConsultations)[number]) => c.status === "completed").length },
+    { id: "cancelled", label: "Cancelled", count: doctorConsultations.filter((c: (typeof doctorConsultations)[number]) => c.status === "cancelled").length },
   ];
 
   return (
@@ -166,7 +168,7 @@ export default function DoctorConsultationsPage() {
             >
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center shrink-0">
                     <User className="w-6 h-6 text-muted-foreground" />
                   </div>
                   <div>
@@ -212,7 +214,7 @@ export default function DoctorConsultationsPage() {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2 lg:flex-shrink-0">
+                <div className="flex flex-wrap gap-2 lg:shrink-0">
                   {consultation.status === "confirmed" && (
                     <Link href={`/doctor/consultation/${consultation.id}`}>
                       <Button size="sm">

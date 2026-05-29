@@ -20,12 +20,16 @@ import {
   Save,
   CheckCircle,
   Camera,
-  Upload
+  Upload,
+  Clock,
+  Plus,
+  Trash2
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import type { WeeklySchedule } from "@/lib/types";
 
 /**
  * Doctor Profile Page Component
@@ -35,6 +39,16 @@ export default function DoctorProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [savedMessage, setSavedMessage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const defaultSchedule: WeeklySchedule = {
+    monday: { isWorkingDay: true, slots: [{ startTime: "09:00", endTime: "17:00", isAvailable: true }] },
+    tuesday: { isWorkingDay: true, slots: [{ startTime: "09:00", endTime: "17:00", isAvailable: true }] },
+    wednesday: { isWorkingDay: true, slots: [{ startTime: "09:00", endTime: "17:00", isAvailable: true }] },
+    thursday: { isWorkingDay: true, slots: [{ startTime: "09:00", endTime: "17:00", isAvailable: true }] },
+    friday: { isWorkingDay: true, slots: [{ startTime: "09:00", endTime: "17:00", isAvailable: true }] },
+    saturday: { isWorkingDay: false, slots: [] },
+    sunday: { isWorkingDay: false, slots: [] },
+  };
 
   // Form state - initialize from doctorProfile
   const [formData, setFormData] = useState({
@@ -53,6 +67,7 @@ export default function DoctorProfilePage() {
     location: "Metro Manila",
     acceptsInsurance: true,
   });
+  const [availability, setAvailability] = useState<WeeklySchedule>(defaultSchedule);
 
   // Load profile data on mount and when doctorProfile changes
   useEffect(() => {
@@ -73,8 +88,54 @@ export default function DoctorProfilePage() {
         location: doctorProfile.location || "Metro Manila",
         acceptsInsurance: doctorProfile.acceptsInsurance ?? true,
       });
+      setAvailability(doctorProfile.availability || defaultSchedule);
     }
   }, [doctorProfile, user]);
+
+  const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
+
+  const toggleWorkingDay = (day: typeof days[number]) => {
+    setAvailability(prev => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        isWorkingDay: !prev[day].isWorkingDay,
+        slots: !prev[day].isWorkingDay ? (prev[day].slots.length > 0 ? prev[day].slots : [{ startTime: "09:00", endTime: "17:00", isAvailable: true }]) : prev[day].slots,
+      },
+    }));
+  };
+
+  const updateTimeSlot = (day: typeof days[number], index: number, field: "startTime" | "endTime", value: string) => {
+    setAvailability(prev => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        slots: prev[day].slots.map((slot, slotIndex) => slotIndex === index ? { ...slot, [field]: value } : slot),
+      },
+    }));
+  };
+
+  const addTimeSlot = (day: typeof days[number]) => {
+    setAvailability(prev => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        isWorkingDay: true,
+        slots: [...prev[day].slots, { startTime: "09:00", endTime: "17:00", isAvailable: true }],
+      },
+    }));
+  };
+
+  const removeTimeSlot = (day: typeof days[number], index: number) => {
+    setAvailability(prev => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        slots: prev[day].slots.filter((_, slotIndex) => slotIndex !== index),
+        isWorkingDay: prev[day].slots.length > 1 ? prev[day].isWorkingDay : false,
+      },
+    }));
+  };
 
   /**
    * Handle input changes
@@ -102,7 +163,7 @@ export default function DoctorProfilePage() {
         const base64String = reader.result as string;
         // Save avatar to profile
         if (updateDoctorProfile) {
-          updateDoctorProfile({ avatar: base64String });
+          void updateDoctorProfile({ avatar: base64String });
           toast.success('Profile picture updated!');
         }
       };
@@ -122,7 +183,7 @@ export default function DoctorProfilePage() {
 
     // Update user profile
     if (updateDoctorProfile) {
-      updateDoctorProfile({
+      await updateDoctorProfile({
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
@@ -137,6 +198,7 @@ export default function DoctorProfilePage() {
         languages: formData.languages.split(",").map(l => l.trim()),
         location: formData.location,
         acceptsInsurance: formData.acceptsInsurance,
+        availability,
       });
     }
 
@@ -353,6 +415,73 @@ export default function DoctorProfilePage() {
           </div>
         </div>
 
+        {/* Availability */}
+        <div className="bg-card rounded-xl border border-border p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Availability Schedule</h2>
+              <p className="text-sm text-muted-foreground">Set the days and hours patients can book you.</p>
+            </div>
+            <Clock className="text-muted-foreground" />
+          </div>
+
+          <div className="space-y-3">
+            {days.map((day) => (
+              <div key={day} className="rounded-lg border border-border p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <label className="flex items-center gap-3 text-sm font-medium text-foreground capitalize">
+                    <input
+                      type="checkbox"
+                      checked={availability[day].isWorkingDay}
+                      onChange={() => toggleWorkingDay(day)}
+                      className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                    />
+                    {day}
+                  </label>
+
+                  {availability[day].isWorkingDay ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      {availability[day].slots.map((slot, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <Input
+                            type="time"
+                            value={slot.startTime}
+                            onChange={(e) => updateTimeSlot(day, index, "startTime", e.target.value)}
+                            className="w-28"
+                          />
+                          <span className="text-xs text-muted-foreground">to</span>
+                          <Input
+                            type="time"
+                            value={slot.endTime}
+                            onChange={(e) => updateTimeSlot(day, index, "endTime", e.target.value)}
+                            className="w-28"
+                          />
+                          {availability[day].slots.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeTimeSlot(day, index)}
+                              className="p-2 rounded-md text-destructive hover:bg-destructive/10"
+                              aria-label={`Remove ${day} slot`}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      <Button type="button" variant="outline" size="sm" onClick={() => addTimeSlot(day)}>
+                        <Plus size={16} className="mr-2" />
+                        Add Slot
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Unavailable</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Professional Information */}
         <div className="bg-card rounded-xl border border-border p-6">
           <h2 className="text-lg font-semibold text-foreground mb-4">Professional Information</h2>
@@ -480,7 +609,7 @@ export default function DoctorProfilePage() {
               />
             </div>
 
-            <div className="md:col-span-2 flex items-center gap-3">
+            <div className="md:col-span-2 flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-3">
               <input
                 type="checkbox"
                 name="acceptsInsurance"

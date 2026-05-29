@@ -15,6 +15,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Bell, User, LogOut, ChevronDown } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useAppData } from "@/lib/app-data-context";
@@ -35,6 +36,7 @@ interface HeaderProps {
 export function Header({ title }: HeaderProps) {
   const { user, patientProfile, doctorProfile, logout } = useAuth();
   const { notifications } = useAppData();
+  const router = useRouter();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -58,8 +60,9 @@ export function Header({ title }: HeaderProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
+    router.push('/');
   };
 
   // Get display name from profile or user
@@ -70,15 +73,13 @@ export function Header({ title }: HeaderProps) {
       }
       return "Patient";
     } else if (user?.role === "doctor" && doctorProfile) {
-      if (doctorProfile.lastName) {
-        return `Dr. ${doctorProfile.lastName}`;
-      }
-      if (doctorProfile.firstName) {
-        return `Dr. ${doctorProfile.firstName}`;
+      const fullName = [doctorProfile.firstName, doctorProfile.lastName].filter(Boolean).join(' ').trim();
+      if (fullName) {
+        return `Dr. ${fullName}`;
       }
       return "Doctor";
     }
-    return "User";
+    return user?.role === "doctor" ? "Doctor" : "User";
   };
 
   const displayName = getDisplayName();

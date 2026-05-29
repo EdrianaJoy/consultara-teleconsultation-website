@@ -120,8 +120,8 @@ export function Sidebar({ role }: SidebarProps) {
   
   const navSections = getNavSections(role);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     // Redirect to main page (landing page) instead of login page
     router.push('/');
   };

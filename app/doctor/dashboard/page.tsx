@@ -90,6 +90,14 @@ export default function DoctorDashboard() {
 
   return (
     <div className="space-y-6">
+      <div className="rounded-xl border border-border bg-card p-6">
+        <p className="text-sm text-muted-foreground mb-1">Doctor Portal</p>
+        <h1 className="text-2xl font-bold text-foreground">Welcome, {doctorName}!</h1>
+        <p className="text-sm text-muted-foreground mt-2">
+          Review today&apos;s appointments, update your schedule, and manage patient care.
+        </p>
+      </div>
+
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, index) => (

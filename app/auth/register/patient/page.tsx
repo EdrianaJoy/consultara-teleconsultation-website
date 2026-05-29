@@ -94,7 +94,7 @@ export default function PatientRegistrationPage() {
         currentMedications: medicationsText.split(',').map(s => s.trim()).filter(Boolean),
       };
 
-      completeRegistration(profileData);
+      await completeRegistration(profileData);
       toast.success('Registration complete!');
       router.push('/patient/dashboard');
     } catch {

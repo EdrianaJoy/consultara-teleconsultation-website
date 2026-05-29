@@ -169,7 +169,7 @@ export default function DoctorRegistrationPage() {
         totalReviews: 0,
       };
 
-      completeRegistration(profileData);
+      await completeRegistration(profileData);
       toast.success('Registration complete!');
       router.push('/doctor/dashboard');
     } catch {
@@ -187,7 +187,7 @@ export default function DoctorRegistrationPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F3EFE3] py-8 px-4">
+    <div className="min-h-screen bg-ivory py-8 px-4">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="flex flex-col items-center mb-8">
@@ -198,7 +198,7 @@ export default function DoctorRegistrationPage() {
             height={60}
             className="mb-3"
           />
-          <h1 className="text-xl font-semibold text-[#769382]">ConsulTara</h1>
+          <h1 className="text-xl font-semibold text-sage">ConsulTara</h1>
           <p className="text-[#2D3B35]/70 mt-2">Complete your doctor profile</p>
         </div>
 
@@ -206,18 +206,18 @@ export default function DoctorRegistrationPage() {
         <div className="flex items-center justify-center mb-8">
           {steps.map((step, index) => (
             <div key={step.number} className="flex items-center">
-              <div className={`flex items-center gap-2 ${currentStep >= step.number ? 'text-[#769382]' : 'text-[#C0C3B9]'}`}>
+              <div className={`flex items-center gap-2 ${currentStep >= step.number ? 'text-sage' : 'text-mist'}`}>
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors ${
                   currentStep >= step.number 
-                    ? 'bg-[#769382] border-[#769382] text-white' 
-                    : 'border-[#C0C3B9] text-[#C0C3B9]'
+                    ? 'bg-sage border-sage text-white' 
+                    : 'border-mist text-mist'
                 }`}>
                   <step.icon className="w-5 h-5" />
                 </div>
                 <span className="hidden sm:block text-sm font-medium">{step.title}</span>
               </div>
               {index < steps.length - 1 && (
-                <div className={`w-8 sm:w-12 h-0.5 mx-2 ${currentStep > step.number ? 'bg-[#769382]' : 'bg-[#C0C3B9]'}`} />
+                <div className={`w-8 sm:w-12 h-0.5 mx-2 ${currentStep > step.number ? 'bg-sage' : 'bg-mist'}`} />
               )}
             </div>
           ))}
@@ -241,7 +241,7 @@ export default function DoctorRegistrationPage() {
                     value={formData.firstName}
                     onChange={(e) => updateFormData('firstName', e.target.value)}
                     placeholder="Enter your first name"
-                    className="h-11 border-[#C0C3B9] focus:border-[#769382]"
+                    className="h-11 border-mist focus:border-sage"
                   />
                 </div>
                 <div className="space-y-2">
@@ -251,7 +251,7 @@ export default function DoctorRegistrationPage() {
                     value={formData.lastName}
                     onChange={(e) => updateFormData('lastName', e.target.value)}
                     placeholder="Enter your last name"
-                    className="h-11 border-[#C0C3B9] focus:border-[#769382]"
+                    className="h-11 border-mist focus:border-sage"
                   />
                 </div>
               </div>
@@ -264,7 +264,7 @@ export default function DoctorRegistrationPage() {
                   value={formData.phone}
                   onChange={(e) => updateFormData('phone', e.target.value)}
                   placeholder="+63 9XX XXX XXXX"
-                  className="h-11 border-[#C0C3B9] focus:border-[#769382]"
+                  className="h-11 border-mist focus:border-sage"
                 />
               </div>
 
@@ -275,7 +275,7 @@ export default function DoctorRegistrationPage() {
                   value={formData.bio}
                   onChange={(e) => updateFormData('bio', e.target.value)}
                   placeholder="Tell patients about yourself, your experience, and approach to care..."
-                  className="min-h-24 border-[#C0C3B9] focus:border-[#769382] resize-none"
+                  className="min-h-24 border-mist focus:border-sage resize-none"
                 />
               </div>
             </div>
@@ -296,7 +296,7 @@ export default function DoctorRegistrationPage() {
                   value={formData.licenseNumber}
                   onChange={(e) => updateFormData('licenseNumber', e.target.value)}
                   placeholder="e.g., PRC-0123456"
-                  className="h-11 border-[#C0C3B9] focus:border-[#769382]"
+                  className="h-11 border-mist focus:border-sage"
                 />
               </div>
 
@@ -307,7 +307,7 @@ export default function DoctorRegistrationPage() {
                     value={formData.department}
                     onValueChange={(value) => updateFormData('department', value as Department)}
                   >
-                    <SelectTrigger className="h-11 border-[#C0C3B9] focus:border-[#769382]">
+                    <SelectTrigger className="h-11 border-mist focus:border-sage">
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                     <SelectContent>
@@ -326,7 +326,7 @@ export default function DoctorRegistrationPage() {
                     value={formData.specialization}
                     onChange={(e) => updateFormData('specialization', e.target.value)}
                     placeholder="e.g., Interventional Cardiology"
-                    className="h-11 border-[#C0C3B9] focus:border-[#769382]"
+                    className="h-11 border-mist focus:border-sage"
                   />
                 </div>
               </div>
@@ -340,7 +340,7 @@ export default function DoctorRegistrationPage() {
                     min="0"
                     value={formData.yearsOfExperience}
                     onChange={(e) => updateFormData('yearsOfExperience', parseInt(e.target.value) || 0)}
-                    className="h-11 border-[#C0C3B9] focus:border-[#769382]"
+                    className="h-11 border-mist focus:border-sage"
                   />
                 </div>
                 <div className="space-y-2">
@@ -355,7 +355,7 @@ export default function DoctorRegistrationPage() {
                       min="0"
                       value={formData.consultationFee}
                       onChange={(e) => updateFormData('consultationFee', parseInt(e.target.value) || 0)}
-                      className="h-11 border-[#C0C3B9] focus:border-[#769382] pl-8"
+                      className="h-11 border-mist focus:border-sage pl-8"
                     />
                   </div>
                 </div>
@@ -368,7 +368,7 @@ export default function DoctorRegistrationPage() {
                   value={formData.education}
                   onChange={(e) => updateFormData('education', e.target.value)}
                   placeholder="e.g., MD from UP Manila, Cardiology Fellowship at Philippine Heart Center"
-                  className="min-h-20 border-[#C0C3B9] focus:border-[#769382] resize-none"
+                  className="min-h-20 border-mist focus:border-sage resize-none"
                 />
               </div>
 
@@ -379,7 +379,7 @@ export default function DoctorRegistrationPage() {
                   value={languagesText}
                   onChange={(e) => setLanguagesText(e.target.value)}
                   placeholder="English, Filipino, Mandarin (comma-separated)"
-                  className="h-11 border-[#C0C3B9] focus:border-[#769382]"
+                  className="h-11 border-mist focus:border-sage"
                 />
               </div>
             </div>
@@ -399,7 +399,7 @@ export default function DoctorRegistrationPage() {
                   value={formData.location}
                   onValueChange={(value) => updateFormData('location', value)}
                 >
-                  <SelectTrigger className="h-11 border-[#C0C3B9] focus:border-[#769382]">
+                  <SelectTrigger className="h-11 border-mist focus:border-sage">
                     <SelectValue placeholder="Select your location" />
                   </SelectTrigger>
                   <SelectContent>
@@ -417,16 +417,16 @@ export default function DoctorRegistrationPage() {
                   id="acceptsInsurance"
                   checked={formData.acceptsInsurance}
                   onCheckedChange={(checked) => updateFormData('acceptsInsurance', checked)}
-                  className="data-[state=checked]:bg-[#769382] data-[state=checked]:border-[#769382]"
+                  className="data-[state=checked]:bg-sage data-[state=checked]:border-sage"
                 />
                 <Label htmlFor="acceptsInsurance" className="text-[#2D3B35] cursor-pointer">
                   I accept health insurance (HMO, PhilHealth, etc.)
                 </Label>
               </div>
 
-              <div className="bg-[#FFEBBC]/30 rounded-lg p-4">
-                <h4 className="font-medium text-[#2D3B35] mb-2">About Your Location</h4>
-                <p className="text-sm text-[#2D3B35]/70">
+              <div className="bg-cream/30 rounded-lg p-4">
+                <h4 className="font-medium text-foreground mb-2">About Your Location</h4>
+                <p className="text-sm text-foreground/70">
                   This helps patients find doctors near them. You can also provide teleconsultation services to patients anywhere in Metro Manila.
                 </p>
               </div>
@@ -453,8 +453,8 @@ export default function DoctorRegistrationPage() {
                       key={day}
                       className={`p-4 rounded-lg border-2 transition-colors ${
                         workingDays[day]
-                          ? 'border-[#769382] bg-[#769382]/10'
-                          : 'border-[#C0C3B9] bg-white'
+                          ? 'border-sage bg-sage/10'
+                          : 'border-mist bg-white'
                       }`}
                     >
                       <div className="flex items-center justify-between">
@@ -464,9 +464,9 @@ export default function DoctorRegistrationPage() {
                             onCheckedChange={(checked) => 
                               setWorkingDays(prev => ({ ...prev, [day]: checked as boolean }))
                             }
-                            className="data-[state=checked]:bg-[#769382] data-[state=checked]:border-[#769382]"
+                            className="data-[state=checked]:bg-sage data-[state=checked]:border-sage"
                           />
-                          <span className="text-sm font-medium text-[#2D3B35] capitalize">{day}</span>
+                          <span className="text-sm font-medium text-foreground capitalize">{day}</span>
                         </div>
                         {workingDays[day] && (
                           <div className="flex items-center gap-2">
@@ -477,9 +477,9 @@ export default function DoctorRegistrationPage() {
                                 ...prev,
                                 [day]: { ...prev[day], start: e.target.value }
                               }))}
-                              className="w-28 h-9 text-sm border-[#C0C3B9]"
+                              className="w-28 h-9 text-sm border-mist"
                             />
-                            <span className="text-[#2D3B35]/60">to</span>
+                            <span className="text-foreground/60">to</span>
                             <Input
                               type="time"
                               value={timeSlots[day].end}
@@ -487,7 +487,7 @@ export default function DoctorRegistrationPage() {
                                 ...prev,
                                 [day]: { ...prev[day], end: e.target.value }
                               }))}
-                              className="w-28 h-9 text-sm border-[#C0C3B9]"
+                              className="w-28 h-9 text-sm border-mist"
                             />
                           </div>
                         )}
@@ -497,8 +497,8 @@ export default function DoctorRegistrationPage() {
                 </div>
               </div>
 
-              <div className="bg-[#FFEBBC]/30 rounded-lg p-4">
-                <p className="text-sm text-[#2D3B35]/70">
+              <div className="bg-cream/30 rounded-lg p-4">
+                <p className="text-sm text-foreground/70">
                   These are your default hours. Patients will be able to book appointments during these times. You can customize specific time slots from your dashboard after registration.
                 </p>
               </div>
@@ -506,13 +506,13 @@ export default function DoctorRegistrationPage() {
           )}
 
           {/* Navigation Buttons */}
-          <div className="flex justify-between mt-8 pt-6 border-t border-[#C0C3B9]">
+          <div className="flex justify-between mt-8 pt-6 border-t border-mist">
             {currentStep > 1 ? (
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleBack}
-                className="border-[#C0C3B9] text-[#2D3B35] hover:bg-[#C0C3B9]/20"
+                className="border-mist text-foreground hover:bg-mist/20"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back
@@ -522,7 +522,7 @@ export default function DoctorRegistrationPage() {
                 type="button"
                 variant="ghost"
                 onClick={() => router.push('/auth/select-role')}
-                className="text-[#2D3B35]/70"
+                className="text-foreground/70"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Change Role
@@ -533,7 +533,7 @@ export default function DoctorRegistrationPage() {
               <Button
                 type="button"
                 onClick={handleNext}
-                className="bg-[#769382] hover:bg-[#769382]/90 text-white"
+                className="bg-sage hover:bg-sage/90 text-white"
               >
                 Next
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -543,7 +543,7 @@ export default function DoctorRegistrationPage() {
                 type="button"
                 onClick={handleSubmit}
                 disabled={isLoading}
-                className="bg-[#769382] hover:bg-[#769382]/90 text-white"
+                className="bg-sage hover:bg-sage/90 text-white"
               >
                 {isLoading ? 'Completing...' : 'Complete Registration'}
               </Button>
