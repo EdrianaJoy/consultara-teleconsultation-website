@@ -63,7 +63,7 @@ export default function LandingPage() {
                   Sign In
                 </Button>
               </Link>
-              <Link href="/auth/signup">
+              <Link href="/auth/select-role">
                 <Button className="bg-[#769382] hover:bg-[#769382]/90 text-white">
                   Get Started
                 </Button>

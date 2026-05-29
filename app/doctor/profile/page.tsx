@@ -178,34 +178,35 @@ export default function DoctorProfilePage() {
     e.preventDefault();
     setIsSaving(true);
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      if (updateDoctorProfile) {
+        await updateDoctorProfile({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phone: formData.phone,
+          specialization: formData.specialization,
+          department: formData.department as any,
+          licenseNumber: formData.licenseNumber,
+          yearsOfExperience: Number(formData.yearsOfExperience),
+          education: formData.education,
+          bio: formData.bio,
+          consultationFee: Number(formData.consultationFee),
+          languages: formData.languages.split(",").map(l => l.trim()),
+          location: formData.location,
+          acceptsInsurance: formData.acceptsInsurance,
+          availability,
+        });
+      }
 
-    // Update user profile
-    if (updateDoctorProfile) {
-      await updateDoctorProfile({
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        phone: formData.phone,
-        specialization: formData.specialization,
-        department: formData.department as any,
-        licenseNumber: formData.licenseNumber,
-        yearsOfExperience: Number(formData.yearsOfExperience),
-        education: formData.education,
-        bio: formData.bio,
-        consultationFee: Number(formData.consultationFee),
-        languages: formData.languages.split(",").map(l => l.trim()),
-        location: formData.location,
-        acceptsInsurance: formData.acceptsInsurance,
-        availability,
-      });
+      setSavedMessage(true);
+      toast.success('Profile saved successfully!');
+      setTimeout(() => setSavedMessage(false), 3000);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to save profile';
+      toast.error(`Profile save failed. ${message}`);
+    } finally {
+      setIsSaving(false);
     }
-
-    setIsSaving(false);
-    setSavedMessage(true);
-    toast.success('Profile saved successfully!');
-    setTimeout(() => setSavedMessage(false), 3000);
   };
 
   const departments = [
@@ -368,8 +369,9 @@ export default function DoctorProfilePage() {
                   type="email"
                   value={formData.email}
                   onChange={handleChange}
+                  readOnly
                   className="pl-10"
-                  placeholder="Enter email"
+                  placeholder="Email from your account"
                 />
               </div>
             </div>

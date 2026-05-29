@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { ArrowLeft, ArrowRight, User, Briefcase, Clock, MapPin } from 'lucide-react';
@@ -53,15 +53,16 @@ const defaultSchedule: WeeklySchedule = {
 
 export default function DoctorRegistrationPage() {
   const router = useRouter();
-  const { completeRegistration } = useAuth();
+  const { user, isLoading: authLoading, completeRegistration } = useAuth();
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [isLoading, setIsLoading] = useState(false);
 
   // Form state
-  const [formData, setFormData] = useState<Partial<DoctorProfile>>({
+  const [formData, setFormData] = useState<Partial<DoctorProfile> & { dateOfBirth?: string }>({
     firstName: '',
     lastName: '',
     phone: '',
+    dateOfBirth: '',
     specialization: '',
     department: 'general-medicine',
     licenseNumber: '',
@@ -96,9 +97,25 @@ export default function DoctorRegistrationPage() {
     sunday: { start: '09:00', end: '13:00' },
   });
 
+  const formatRegistrationError = (error: unknown) => {
+    const reason = error instanceof Error ? error.message.trim() : '';
+    if (!reason) {
+      return 'Registration failed. Please try again.';
+    }
+
+    return reason.startsWith('Registration failed.') ? reason : `Registration failed. ${reason}`;
+  };
+
   const updateFormData = (field: keyof DoctorProfile, value: unknown) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      router.replace('/auth/signup');
+    }
+  }, [user, authLoading, router]);
 
   const handleNext = () => {
     if (currentStep === 1) {
@@ -106,11 +123,37 @@ export default function DoctorRegistrationPage() {
         toast.error('Please fill in all required fields');
         return;
       }
+      // Validate date of birth (minimum age 17)
+      if (!formData.dateOfBirth) {
+        toast.error('Please enter your date of birth');
+        return;
+      }
+      const dob = new Date(formData.dateOfBirth);
+      if (Number.isNaN(dob.getTime())) {
+        toast.error('Invalid date of birth');
+        return;
+      }
+      const today = new Date();
+      const age = today.getFullYear() - dob.getFullYear() - (today < new Date(dob.getFullYear() + (today.getFullYear() - dob.getFullYear()), dob.getMonth(), dob.getDate()) ? 1 : 0);
+      // Simple age calc: compare year difference and adjust
+      const ageYears = Math.floor((today.getTime() - dob.getTime()) / (1000 * 60 * 60 * 24 * 365.25));
+      if (ageYears < 17) {
+        toast.error('You must be at least 17 years old to register');
+        return;
+      }
     } else if (currentStep === 2) {
       if (!formData.licenseNumber || !formData.specialization || !formData.education) {
         toast.error('Please fill in all required fields');
         return;
       }
+      // Validate PRC license format (e.g., PRC-0123456)
+      const license = String(formData.licenseNumber || '').trim().toUpperCase();
+      const prcRegex = /^PRC-\d{6,7}$/; // allow 6 or 7 digits
+      if (!prcRegex.test(license)) {
+        toast.error('PRC license number must be in the format PRC-0123456');
+        return;
+      }
+      updateFormData('licenseNumber', license);
     } else if (currentStep === 3) {
       if (!formData.location) {
         toast.error('Please select your location');
@@ -172,8 +215,8 @@ export default function DoctorRegistrationPage() {
       await completeRegistration(profileData);
       toast.success('Registration complete!');
       router.push('/doctor/dashboard');
-    } catch {
-      toast.error('Registration failed. Please try again.');
+    } catch (error) {
+      toast.error(formatRegistrationError(error));
     } finally {
       setIsLoading(false);
     }
@@ -264,6 +307,17 @@ export default function DoctorRegistrationPage() {
                   value={formData.phone}
                   onChange={(e) => updateFormData('phone', e.target.value)}
                   placeholder="+63 9XX XXX XXXX"
+                  className="h-11 border-mist focus:border-sage"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="dateOfBirth" className="text-[#2D3B35]">Date of Birth *</Label>
+                <Input
+                  id="dateOfBirth"
+                  type="date"
+                  value={formData.dateOfBirth || ''}
+                  onChange={(e) => updateFormData('dateOfBirth', e.target.value)}
                   className="h-11 border-mist focus:border-sage"
                 />
               </div>

@@ -121,9 +121,12 @@ export function Sidebar({ role }: SidebarProps) {
   const navSections = getNavSections(role);
 
   const handleLogout = async () => {
-    await logout();
-    // Redirect to main page (landing page) instead of login page
-    router.push('/');
+    try {
+      await logout();
+    } finally {
+      // Redirect to the main landing page even if sign-out fails.
+      router.push('/');
+    }
   };
 
   const handleHelpClick = () => {
@@ -134,7 +137,7 @@ export function Sidebar({ role }: SidebarProps) {
   const sidebarContent = (
     <>
       {/* Logo Section */}
-      <div className="p-6 flex items-center gap-3">
+      <Link href="/" className="p-6 flex items-center gap-3">
         <div className="w-12 h-12 rounded-full flex items-center justify-center overflow-hidden">
           <img 
             src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/ConsulTara%20Logo-oqtBESzen2QQnxkVKzgc7RxAQEbHnb.png" 
@@ -143,7 +146,7 @@ export function Sidebar({ role }: SidebarProps) {
           />
         </div>
         <span className="text-xl font-semibold text-primary">ConsulTara</span>
-      </div>
+      </Link>
 
       {/* Navigation Sections */}
       <nav className="flex-1 px-4 py-2">

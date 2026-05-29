@@ -14,35 +14,50 @@ import { User, Stethoscope, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth, isRoleSelectionPending, isRegistrationComplete } from '@/lib/auth-context';
 
-export default function SelectRolePage() {
+interface SelectRolePageProps {
+  allowUnauthenticated?: boolean;
+}
+
+export default function SelectRolePage({ allowUnauthenticated = true }: SelectRolePageProps) {
   const router = useRouter();
   const { user, selectRole, patientProfile, doctorProfile } = useAuth();
 
   useEffect(() => {
-    // If not authenticated, redirect to sign in
+    // Public sign-up mode should stay on this page.
+    if (!user && allowUnauthenticated) {
+      return;
+    }
+
+    // If not authenticated, redirect to sign in.
     if (!user) {
       router.push('/auth/signin');
       return;
     }
 
-    // If role already selected and registration complete, redirect to dashboard
-    if (!isRoleSelectionPending()) {
-      if (user.role === 'patient' && patientProfile?.firstName) {
-        router.push('/patient/dashboard');
-      } else if (user.role === 'doctor' && doctorProfile?.firstName) {
-        router.push('/doctor/dashboard');
-      }
+    // If the account already has a role, go straight to the role dashboard.
+    if (user.role === 'patient') {
+      router.push('/patient/dashboard');
+      return;
     }
-  }, [user, router, patientProfile, doctorProfile]);
+
+    if (user.role === 'doctor') {
+      router.push('/doctor/dashboard');
+      return;
+    }
+
+    // If no role is set yet, keep the role selection step visible.
+  }, [allowUnauthenticated, user, router, patientProfile, doctorProfile]);
 
   const handleRoleSelect = (role: 'patient' | 'doctor') => {
-    selectRole(role);
+    if (user) {
+      void selectRole(role);
+    }
     
-    // Redirect to registration form
+    // Redirect to the public signup flow with the selected role prefilled.
     if (role === 'patient') {
-      router.push('/auth/register/patient');
+      router.push('/auth/signup?role=patient');
     } else {
-      router.push('/auth/register/doctor');
+      router.push('/auth/signup?role=doctor');
     }
   };
 

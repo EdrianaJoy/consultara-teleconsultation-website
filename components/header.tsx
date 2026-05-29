@@ -61,8 +61,11 @@ export function Header({ title }: HeaderProps) {
   }, []);
 
   const handleLogout = async () => {
-    await logout();
-    router.push('/');
+    try {
+      await logout();
+    } finally {
+      router.push('/');
+    }
   };
 
   // Get display name from profile or user

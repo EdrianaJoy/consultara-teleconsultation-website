@@ -23,8 +23,26 @@ interface AuthState {
 }
 
 interface AuthContextType extends AuthState {
-  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signIn: (email: string, password: string) => Promise<{
+    success: boolean;
+    error?: string;
+    user?: User;
+    patientProfile?: PatientProfile | null;
+    doctorProfile?: DoctorProfile | null;
+  }>;
   signUp: (email: string, password: string, role: UserRole) => Promise<{ success: boolean; error?: string }>;
+  register: (
+    email: string,
+    password: string,
+    role: UserRole,
+    profileData: Partial<PatientProfile> | Partial<DoctorProfile>,
+  ) => Promise<{
+    success: boolean;
+    error?: string;
+    user?: User;
+    patientProfile?: PatientProfile | null;
+    doctorProfile?: DoctorProfile | null;
+  }>;
   signOut: () => Promise<void>;
   logout: () => Promise<void>;
   selectRole: (role: UserRole) => Promise<void>;
@@ -106,7 +124,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Sign in function
-  const signIn = useCallback(async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const signIn = useCallback(async (email: string, password: string): Promise<{
+    success: boolean;
+    error?: string;
+    user?: User;
+    patientProfile?: PatientProfile | null;
+    doctorProfile?: DoctorProfile | null;
+  }> => {
     try {
       const result = await apiRequest<{ success: boolean; error?: string; user?: User; patientProfile?: PatientProfile | null; doctorProfile?: DoctorProfile | null }>('/api/session', {
         method: 'POST',
@@ -117,8 +141,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: result.error || 'Sign in failed' };
       }
 
-      localStorage.setItem(STORAGE_KEYS.PENDING_ROLE, 'true');
-
       setState({
         user: result.user,
         patientProfile: result.patientProfile || null,
@@ -127,7 +149,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: true,
       });
 
-      return { success: true };
+      return {
+        success: true,
+        user: result.user,
+        patientProfile: result.patientProfile || null,
+        doctorProfile: result.doctorProfile || null,
+      };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Sign in failed' };
     }
@@ -157,6 +184,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: true };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Sign up failed' };
+    }
+  }, []);
+
+  const register = useCallback(async (
+    email: string,
+    password: string,
+    role: UserRole,
+    profileData: Partial<PatientProfile> | Partial<DoctorProfile>,
+  ): Promise<{
+    success: boolean;
+    error?: string;
+    user?: User;
+    patientProfile?: PatientProfile | null;
+    doctorProfile?: DoctorProfile | null;
+  }> => {
+    try {
+      const result = await apiRequest<{
+        success: boolean;
+        error?: string;
+        user?: User;
+        patientProfile?: PatientProfile | null;
+        doctorProfile?: DoctorProfile | null;
+      }>('/api/session', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'register', email, password, role, profileData }),
+      });
+
+      if (!result.success || !result.user) {
+        return { success: false, error: result.error || 'Registration failed' };
+      }
+
+      setState({
+        user: result.user,
+        patientProfile: result.patientProfile || null,
+        doctorProfile: result.doctorProfile || null,
+        isLoading: false,
+        isAuthenticated: true,
+      });
+
+      return {
+        success: true,
+        user: result.user,
+        patientProfile: result.patientProfile || null,
+        doctorProfile: result.doctorProfile || null,
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Registration failed' };
     }
   }, []);
 
@@ -252,6 +326,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ...state,
     signIn,
     signUp,
+    register,
     signOut,
     logout: signOut,
     selectRole,

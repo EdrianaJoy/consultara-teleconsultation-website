@@ -118,8 +118,9 @@ function initializeSchema(database: DatabaseInstance) {
       education TEXT,
       bio TEXT,
       consultation_fee INTEGER NOT NULL,
-      avatar TEXT,
-      availability_json TEXT NOT NULL,
+        avatar TEXT,
+        date_of_birth TEXT,
+        availability_json TEXT NOT NULL,
       languages_json TEXT NOT NULL,
       rating REAL NOT NULL DEFAULT 0,
       total_reviews INTEGER NOT NULL DEFAULT 0,
@@ -200,6 +201,11 @@ function initializeSchema(database: DatabaseInstance) {
       created_at TEXT NOT NULL
     );
   `);
+
+  const doctorProfileColumns = database.prepare('PRAGMA table_info(doctor_profiles)').all() as Array<{ name: string }>;
+  if (!doctorProfileColumns.some(column => column.name === 'date_of_birth')) {
+    database.exec('ALTER TABLE doctor_profiles ADD COLUMN date_of_birth TEXT');
+  }
 }
 
 function seedDatabase(database: DatabaseInstance) {
@@ -781,17 +787,22 @@ export const consultaraDb = {
       currentMedicationsJson: JSON.stringify(merged.currentMedications || []),
     });
 
-    const user = getUserById(userId);
-    if (user) {
-      database.prepare('UPDATE users SET email = ?, updated_at = ? WHERE id = ?').run(merged.email, merged.updatedAt, userId);
-    }
-
     return buildSessionPayload(userId);
   },
 
   upsertDoctorProfile(userId: string, profileData: Partial<DoctorProfile>): SessionPayload {
     const database = getDb();
     const existing = getDoctorProfileByUserId(userId);
+    const account = getUserById(userId);
+    // Server-side PRC license validation: format + check against seeded doctors
+    if (profileData.licenseNumber) {
+      const license = String(profileData.licenseNumber).trim().toUpperCase();
+      const prcRegex = /^PRC-\d{6,7}$/;
+      if (!prcRegex.test(license)) {
+        throw new Error('Invalid PRC license format');
+      }
+      profileData.licenseNumber = license;
+    }
     const base = existing || {
       id: `doctor-${crypto.randomUUID()}`,
       userId,
@@ -830,7 +841,7 @@ export const consultaraDb = {
       ...base,
       ...profileData,
       userId,
-      email: profileData.email || base.email,
+      email: account?.email || base.email || profileData.email || '',
       specialization: profileData.specialization || base.specialization,
       department: profileData.department || base.department,
       licenseNumber: profileData.licenseNumber || base.licenseNumber,
@@ -850,11 +861,11 @@ export const consultaraDb = {
     database.prepare(`
       INSERT INTO doctor_profiles (
         id, user_id, first_name, last_name, email, phone, specialization, department, license_number,
-        years_of_experience, education, bio, consultation_fee, avatar, availability_json, languages_json,
+        years_of_experience, education, bio, consultation_fee, avatar, date_of_birth, availability_json, languages_json,
         rating, total_reviews, is_available, location, accepts_insurance, contact_number, created_at, updated_at
       ) VALUES (
         @id, @userId, @firstName, @lastName, @email, @phone, @specialization, @department, @licenseNumber,
-        @yearsOfExperience, @education, @bio, @consultationFee, @avatar, @availabilityJson, @languagesJson,
+        @yearsOfExperience, @education, @bio, @consultationFee, @avatar, @dateOfBirth, @availabilityJson, @languagesJson,
         @rating, @totalReviews, @isAvailable, @location, @acceptsInsurance, @contactNumber, @createdAt, @updatedAt
       )
       ON CONFLICT(user_id) DO UPDATE SET
@@ -877,6 +888,7 @@ export const consultaraDb = {
         is_available = excluded.is_available,
         location = excluded.location,
         accepts_insurance = excluded.accepts_insurance,
+        date_of_birth = excluded.date_of_birth,
         contact_number = excluded.contact_number,
         updated_at = excluded.updated_at
     `).run({
@@ -885,13 +897,9 @@ export const consultaraDb = {
       languagesJson: JSON.stringify(merged.languages || []),
       isAvailable: merged.isAvailable ? 1 : 0,
       acceptsInsurance: merged.acceptsInsurance ? 1 : 0,
+      dateOfBirth: (merged as any).dateOfBirth || null,
       contactNumber: merged.contactNumber || null,
     });
-
-    const user = getUserById(userId);
-    if (user) {
-      database.prepare('UPDATE users SET email = ?, updated_at = ? WHERE id = ?').run(merged.email, merged.updatedAt, userId);
-    }
 
     return buildSessionPayload(userId);
   },

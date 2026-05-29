@@ -19,6 +19,22 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/lib/auth-context';
 import { toast } from 'sonner';
 
+function getDashboardRoute(
+  user: { role: 'patient' | 'doctor' } | undefined,
+  patientProfile: { firstName?: string } | null | undefined,
+  doctorProfile: { firstName?: string } | null | undefined,
+) {
+  if (user?.role === 'patient') {
+    return '/patient/dashboard';
+  }
+
+  if (user?.role === 'doctor') {
+    return '/doctor/dashboard';
+  }
+
+  return '/auth/select-role';
+}
+
 export default function SignInPage() {
   const router = useRouter();
   const { signIn } = useAuth();
@@ -44,8 +60,7 @@ export default function SignInPage() {
       
       if (result.success) {
         toast.success('Welcome back!');
-        // Redirect to role selection page
-        router.push('/auth/select-role');
+        router.push(getDashboardRoute(result.user, result.patientProfile, result.doctorProfile));
       } else {
         toast.error(result.error || 'Sign in failed');
       }
@@ -65,8 +80,8 @@ export default function SignInPage() {
       {/* Left Side - Image */}
       <div className="hidden lg:block lg:w-1/2 relative">
         <Image
-          src="https://images.unsplash.com/photo-1551190822-a9333d879b1f?w=1200&h=1600&fit=crop"
-          alt="Doctor and patient consultation"
+          src="https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=1200&h=1600&fit=crop"
+          alt="Telehealth consultation between doctor and patient"
           fill
           className="object-cover"
           priority
@@ -79,7 +94,7 @@ export default function SignInPage() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-[#F3EFE3]">
         <div className="w-full max-w-md space-y-8">
           {/* Logo */}
-          <div className="flex flex-col items-center">
+          <Link href="/" className="flex flex-col items-center">
             <Image
               src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/ConsulTara%20Logo-oqtBESzen2QQnxkVKzgc7RxAQEbHnb.png"
               alt="ConsulTara Logo"
@@ -88,7 +103,7 @@ export default function SignInPage() {
               className="mb-4"
             />
             <h1 className="text-2xl font-semibold text-[#769382]">ConsulTara</h1>
-          </div>
+          </Link>
 
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -209,7 +224,7 @@ export default function SignInPage() {
           <p className="text-center text-sm text-[#2D3B35]/70">
             Don&apos;t have an account?{' '}
             <Link
-              href="/auth/signup"
+              href="/auth/select-role"
               className="text-[#769382] font-medium hover:text-[#769382]/80 transition-colors"
             >
               Sign up

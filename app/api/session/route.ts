@@ -53,6 +53,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, ...sessionResponse(result.session) });
   }
 
+  if (action === 'register') {
+    const signupResult = consultaraDb.signUp(String(body.email || ''), String(body.password || ''), body.role);
+    if (!signupResult.success || !signupResult.session?.user) {
+      return NextResponse.json(signupResult, { status: 400 });
+    }
+
+    const payload = consultaraDb.completeRegistration(signupResult.session.user.id, body.profileData || {});
+    cookieStore.set(SESSION_COOKIE, signupResult.session.user.id, { path: '/', sameSite: 'lax' });
+    return NextResponse.json({ success: true, ...sessionResponse(payload) });
+  }
+
   const sessionId = cookieStore.get(SESSION_COOKIE)?.value;
   if (!sessionId) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
@@ -75,13 +86,21 @@ export async function POST(request: NextRequest) {
   }
 
   if (action === 'updateDoctorProfile') {
-    const payload = consultaraDb.upsertDoctorProfile(sessionId, body.profile || {});
-    return NextResponse.json({ success: true, ...sessionResponse(payload) });
+    try {
+      const payload = consultaraDb.upsertDoctorProfile(sessionId, body.profile || {});
+      return NextResponse.json({ success: true, ...sessionResponse(payload) });
+    } catch (err: any) {
+      return NextResponse.json({ error: err?.message || 'Failed to update profile' }, { status: 400 });
+    }
   }
 
   if (action === 'completeRegistration') {
-    const payload = consultaraDb.completeRegistration(sessionId, body.profileData || {});
-    return NextResponse.json({ success: true, ...sessionResponse(payload) });
+    try {
+      const payload = consultaraDb.completeRegistration(sessionId, body.profileData || {});
+      return NextResponse.json({ success: true, ...sessionResponse(payload) });
+    } catch (err: any) {
+      return NextResponse.json({ error: err?.message || 'Failed to complete registration' }, { status: 400 });
+    }
   }
 
   return NextResponse.json({ error: 'Unsupported action' }, { status: 400 });

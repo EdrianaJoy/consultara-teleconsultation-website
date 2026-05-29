@@ -8,7 +8,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { 
   Clock, 
   Plus, 
@@ -23,6 +23,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useAppData } from "@/lib/app-data-context";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import type { WeeklySchedule } from "@/lib/types";
 
 /**
  * Time slot type
@@ -35,25 +36,29 @@ interface TimeSlot {
 /**
  * Default schedule template
  */
-const defaultSchedule: Record<string, TimeSlot[]> = {
-  Monday: [{ start: "09:00", end: "12:00" }, { start: "14:00", end: "17:00" }],
-  Tuesday: [{ start: "09:00", end: "12:00" }, { start: "14:00", end: "17:00" }],
-  Wednesday: [{ start: "09:00", end: "12:00" }, { start: "14:00", end: "17:00" }],
-  Thursday: [{ start: "09:00", end: "12:00" }, { start: "14:00", end: "17:00" }],
-  Friday: [{ start: "09:00", end: "12:00" }, { start: "14:00", end: "17:00" }],
-  Saturday: [],
-  Sunday: [],
+const defaultSchedule: WeeklySchedule = {
+  monday: { isWorkingDay: true, slots: [{ startTime: "09:00", endTime: "17:00", isAvailable: true }] },
+  tuesday: { isWorkingDay: true, slots: [{ startTime: "09:00", endTime: "17:00", isAvailable: true }] },
+  wednesday: { isWorkingDay: true, slots: [{ startTime: "09:00", endTime: "17:00", isAvailable: true }] },
+  thursday: { isWorkingDay: true, slots: [{ startTime: "09:00", endTime: "17:00", isAvailable: true }] },
+  friday: { isWorkingDay: true, slots: [{ startTime: "09:00", endTime: "17:00", isAvailable: true }] },
+  saturday: { isWorkingDay: false, slots: [] },
+  sunday: { isWorkingDay: false, slots: [] },
 };
 
 /**
  * Doctor Schedule Page Component
  */
 export default function DoctorSchedulePage() {
-  const { user } = useAuth();
+  const { user, doctorProfile, updateDoctorProfile } = useAuth();
   const { appointments, updateAppointmentStatus } = useAppData();
-  const [schedule, setSchedule] = useState(defaultSchedule);
+  const [schedule, setSchedule] = useState<WeeklySchedule>(doctorProfile?.availability || defaultSchedule);
   const [isSaving, setIsSaving] = useState(false);
   const [savedMessage, setSavedMessage] = useState(false);
+
+  useEffect(() => {
+    setSchedule(doctorProfile?.availability || defaultSchedule);
+  }, [doctorProfile]);
 
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -61,13 +66,32 @@ export default function DoctorSchedulePage() {
   const doctorAppointments = appointments.filter(apt => apt.doctorId === user?.id);
   const pendingAppointments = doctorAppointments.filter(apt => apt.status === "pending");
 
+  const dayConfig: Array<{ key: keyof WeeklySchedule; label: string }> = [
+    { key: "monday", label: "Monday" },
+    { key: "tuesday", label: "Tuesday" },
+    { key: "wednesday", label: "Wednesday" },
+    { key: "thursday", label: "Thursday" },
+    { key: "friday", label: "Friday" },
+    { key: "saturday", label: "Saturday" },
+    { key: "sunday", label: "Sunday" },
+  ];
+
+  const toWeeklySchedule = (value: WeeklySchedule): WeeklySchedule => value;
+
   /**
    * Add time slot to a day
    */
   const addTimeSlot = (day: string) => {
     setSchedule(prev => ({
       ...prev,
-      [day]: [...prev[day], { start: "09:00", end: "17:00" }],
+      [day]: {
+        ...prev[day as keyof WeeklySchedule],
+        isWorkingDay: true,
+        slots: [
+          ...prev[day as keyof WeeklySchedule].slots,
+          { startTime: "09:00", endTime: "17:00", isAvailable: true },
+        ],
+      },
     }));
   };
 
@@ -77,7 +101,11 @@ export default function DoctorSchedulePage() {
   const removeTimeSlot = (day: string, index: number) => {
     setSchedule(prev => ({
       ...prev,
-      [day]: prev[day].filter((_, i) => i !== index),
+      [day]: {
+        ...prev[day as keyof WeeklySchedule],
+        slots: prev[day as keyof WeeklySchedule].slots.filter((_, i) => i !== index),
+        isWorkingDay: prev[day as keyof WeeklySchedule].slots.length > 1 ? prev[day as keyof WeeklySchedule].isWorkingDay : false,
+      },
     }));
   };
 
@@ -87,9 +115,14 @@ export default function DoctorSchedulePage() {
   const updateTimeSlot = (day: string, index: number, field: "start" | "end", value: string) => {
     setSchedule(prev => ({
       ...prev,
-      [day]: prev[day].map((slot, i) => 
-        i === index ? { ...slot, [field]: value } : slot
-      ),
+      [day]: {
+        ...prev[day as keyof WeeklySchedule],
+        slots: prev[day as keyof WeeklySchedule].slots.map((slot, i) =>
+          i === index
+            ? { ...slot, [field === "start" ? "startTime" : "endTime"]: value }
+            : slot
+        ),
+      },
     }));
   };
 
@@ -98,11 +131,17 @@ export default function DoctorSchedulePage() {
    */
   const handleSaveSchedule = async () => {
     setIsSaving(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsSaving(false);
-    setSavedMessage(true);
-    setTimeout(() => setSavedMessage(false), 3000);
+
+    try {
+      if (updateDoctorProfile) {
+        await updateDoctorProfile({ availability: schedule });
+      }
+
+      setSavedMessage(true);
+      setTimeout(() => setSavedMessage(false), 3000);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   /**
@@ -152,44 +191,44 @@ export default function DoctorSchedulePage() {
             <h2 className="text-lg font-semibold text-foreground mb-4">Weekly Availability</h2>
             
             <div className="space-y-4">
-              {days.map((day) => (
-                <div key={day} className="border-b border-border pb-4 last:border-0 last:pb-0">
+              {dayConfig.map(({ key, label }) => (
+                <div key={key} className="border-b border-border pb-4 last:border-0 last:pb-0">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-medium text-foreground">{day}</h3>
+                    <h3 className="font-medium text-foreground">{label}</h3>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => addTimeSlot(day)}
+                      onClick={() => addTimeSlot(key)}
                     >
                       <Plus size={16} className="mr-1" />
                       Add Slot
                     </Button>
                   </div>
                   
-                  {schedule[day].length === 0 ? (
+                  {!schedule[key].isWorkingDay || schedule[key].slots.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Not available</p>
                   ) : (
                     <div className="space-y-2">
-                      {schedule[day].map((slot, index) => (
+                      {schedule[key].slots.map((slot, index) => (
                         <div key={index} className="flex items-center gap-2">
                           <div className="flex items-center gap-2 flex-1">
                             <Clock size={16} className="text-muted-foreground" />
                             <input
                               type="time"
-                              value={slot.start}
-                              onChange={(e) => updateTimeSlot(day, index, "start", e.target.value)}
+                              value={slot.startTime}
+                              onChange={(e) => updateTimeSlot(key, index, "start", e.target.value)}
                               className="px-3 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm"
                             />
                             <span className="text-muted-foreground">to</span>
                             <input
                               type="time"
-                              value={slot.end}
-                              onChange={(e) => updateTimeSlot(day, index, "end", e.target.value)}
+                              value={slot.endTime}
+                              onChange={(e) => updateTimeSlot(key, index, "end", e.target.value)}
                               className="px-3 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm"
                             />
                           </div>
                           <button
-                            onClick={() => removeTimeSlot(day, index)}
+                            onClick={() => removeTimeSlot(key, index)}
                             className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                             aria-label="Remove time slot"
                           >
