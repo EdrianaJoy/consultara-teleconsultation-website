@@ -54,6 +54,7 @@ type AppointmentUpdateResult = {
   appointment: Appointment | null;
   notifications: Notification[];
   deletedMedicalRecordIds: string[];
+  messages?: Message[];
 };
 
 let db: DatabaseInstance | null = null;
@@ -614,16 +615,16 @@ function buildAppointmentUpdateNotifications(previous: Appointment, next: Appoin
       {
         userId: patientUserId,
         type: 'appointment-rescheduled',
-        title: 'Appointment Rescheduled',
-        message: `Your consultation with ${doctorName} has been rescheduled to ${appointmentDate} at ${appointmentTime}.`,
+        title: 'Rescheduled',
+        message: `Your consultation with ${doctorName} has been rescheduled for ${appointmentDate} at ${appointmentTime}.`,
         isRead: false,
         actionUrl: '/patient/calendar',
       },
       {
         userId: doctorUserId,
         type: 'appointment-rescheduled',
-        title: 'Appointment Rescheduled',
-        message: `Your consultation with ${patientName} has been rescheduled to ${appointmentDate} at ${appointmentTime}.`,
+        title: 'Rescheduled',
+        message: `Your consultation with ${patientName} has been rescheduled for ${appointmentDate} at ${appointmentTime}.`,
         isRead: false,
         actionUrl: '/doctor/calendar',
       },
@@ -680,6 +681,29 @@ function rowToConversation(row: any, lastMessage?: Message | null): Conversation
     unreadCount: row.unread_count,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+function buildRescheduleFollowUpMessage(appointment: Appointment): Message {
+  const patientProfile = getPatientProfileById(appointment.patientId);
+  const doctorProfile = getDoctorProfileById(appointment.doctorId);
+  const patientName = patientProfile?.firstName ? ` ${patientProfile.firstName}` : '';
+  const doctorName = doctorProfile ? `Dr. ${doctorProfile.firstName} ${doctorProfile.lastName}` : 'your doctor';
+  const appointmentDate = formatAppointmentDate(appointment.date);
+  const now = new Date().toISOString();
+
+  return {
+    id: `msg-${crypto.randomUUID()}`,
+    conversationId: '',
+    senderId: appointment.doctorId,
+    senderRole: 'doctor',
+    senderType: 'doctor',
+    content: `Hello${patientName}, your consultation with ${doctorName} has been rescheduled for ${appointmentDate} at ${appointment.timeSlot.startTime}. Please upload any past prescriptions or lab results here so we can review them before your appointment.`,
+    attachments: undefined,
+    isRead: false,
+    read: false,
+    createdAt: now,
+    timestamp: now,
   };
 }
 
@@ -1172,10 +1196,31 @@ export const consultaraDb = {
       : [];
     const persistedNotifications = notifications.map(notification => consultaraDb.addNotification(notification));
 
+    const messages: Message[] = [];
+
+    const rescheduleChanged =
+      previousAppointment.date !== nextAppointment.date ||
+      previousAppointment.timeSlot.startTime !== nextAppointment.timeSlot.startTime ||
+      previousAppointment.timeSlot.endTime !== nextAppointment.timeSlot.endTime ||
+      previousAppointment.consultationType !== nextAppointment.consultationType;
+
+    if (rescheduleChanged) {
+      try {
+        const conv = consultaraDb.getOrCreateConversation(nextAppointment.patientId, nextAppointment.doctorId);
+        const followUp = buildRescheduleFollowUpMessage(nextAppointment);
+        followUp.conversationId = conv.id;
+        const persisted = consultaraDb.addMessage(followUp);
+        messages.push(persisted);
+      } catch (err) {
+        // swallow errors so appointment update still succeeds even if messaging fails
+      }
+    }
+
     return {
       appointment: nextAppointment,
       notifications: persistedNotifications,
       deletedMedicalRecordIds,
+      messages,
     };
   },
 

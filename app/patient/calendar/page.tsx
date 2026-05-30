@@ -83,7 +83,30 @@ export default function CalendarPage() {
   const calendarDays = getCalendarDays(year, month);
 
   // Get patient appointments
-  const patientAppointments = appointments.filter(a => a.patientId === user?.id);
+  const rawPatientAppointments = appointments.filter(a => a.patientId === user?.id);
+
+  // Deduplicate appointments so that when an appointment is rescheduled
+  // the prior scheduled appointment is not shown. We group by doctor +
+  // consultationType + reason and keep the appointment with the latest
+  // `updatedAt` (or date) to represent the current/rescheduled one.
+  const patientAppointments = (() => {
+    const byKey = new Map<string, typeof rawPatientAppointments[0]>();
+    for (const apt of rawPatientAppointments) {
+      if (apt.status === 'cancelled') continue; // skip cancelled
+      const key = `${apt.doctorId}|${apt.consultationType}|${apt.reason || ''}`;
+      const existing = byKey.get(key);
+      if (!existing) {
+        byKey.set(key, apt);
+        continue;
+      }
+      const existingUpdated = new Date(existing.updatedAt || existing.createdAt).getTime();
+      const candidateUpdated = new Date(apt.updatedAt || apt.createdAt).getTime();
+      if (candidateUpdated >= existingUpdated) {
+        byKey.set(key, apt);
+      }
+    }
+    return Array.from(byKey.values()).sort((a, b) => (a.date > b.date ? 1 : a.date < b.date ? -1 : 0));
+  })();
 
   // Get appointments for selected date
   const selectedDateAppointments = selectedDate
