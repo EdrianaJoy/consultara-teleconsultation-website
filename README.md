@@ -78,6 +78,12 @@ Vercel (recommended)
 - Push this repository to GitHub and connect the repo to Vercel. Vercel auto-detects Next.js App Router projects and will handle builds and deployments.
 - A minimal `vercel.json` is included to help detect the Next.js project.
 
+How to verify your live URL updated after pushing to `main`
+- Confirm the commit was merged or pushed to `main`.
+- Open the Vercel project dashboard and check that the latest Production deployment matches the commit SHA you pushed.
+- Visit the production URL and hard refresh the page if you are checking a cached screen.
+- If the live site still looks stale, open the latest deployment details and confirm the build finished successfully.
+
 Self-hosting with Docker + PM2/systemd
 - A production Dockerfile and `docker-compose.yml` are included. The compose file mounts `./data` for persistence (SQLite). Build and run with:
 
