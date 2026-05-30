@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = consultaraDb.resetPassword(email, newPassword);
+    const result = await consultaraDb.resetPassword(email, newPassword);
     if (!result.success) {
       return NextResponse.json({ success: false, error: result.error }, { status: 400 });
     }

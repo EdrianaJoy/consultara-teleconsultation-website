@@ -1,0 +1,113 @@
+name: Deploy Checks
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        run: npm i -g pnpm@8
+
+      - name: Prepare compose override if using managed DATABASE_URL
+        run: |
+          set -e
+          if [ -n "${{ secrets.DATABASE_URL || '' }}" ]; then
+            echo "Writing docker-compose.override.yml to inject managed DATABASE_URL"
+            cat > docker-compose.override.yml <<'EOF'
+version: '3.8'
+services:
+  web:
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - ENABLE_PG_ADAPTER=${ENABLE_PG_ADAPTER:-'true'}
+EOF
+          fi
+
+      - name: Build and run services (docker-compose.pg.yml)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL || '' }}
+          ENABLE_PG_ADAPTER: ${{ secrets.ENABLE_PG_ADAPTER || 'true' }}
+        run: |
+          docker compose -f docker-compose.pg.yml up -d --build
+
+      - name: Wait for /api/health
+        run: |
+          for i in $(seq 1 30); do
+            if curl --fail -s http://localhost:3001/api/health; then
+              echo "health ok"; break
+            fi
+            echo "waiting for health... ($i)";
+            sleep 2;
+          done
+
+      - name: Run DB migration (safe)
+        run: |
+          docker compose -f docker-compose.pg.yml exec -T web pnpm migrate:pg || true
+
+      - name: Run smoke tests (signup → appointment → notifications)
+        env:
+          HOST: http://localhost:3001
+        run: |
+          set -euo pipefail
+          echo "Running smoke signup"
+          curl -s -X POST "$HOST/api/session" -H 'Content-Type: application/json' -d '{"action":"signup","email":"smoketest+patient@example.com","password":"Consultara123!","role":"patient"}' -o /tmp/s1.json
+          cat /tmp/s1.json
+          SESSION_ID=$(jq -r '.user.id' /tmp/s1.json)
+          if [ "$SESSION_ID" = "null" ] || [ -z "$SESSION_ID" ]; then
+            echo "Failed to create session"; exit 2;
+          fi
+
+          echo "Querying doctors"
+          DOCTOR_ID=$(curl -s "$HOST/api/doctors" | jq -r '.doctors[0].id')
+          if [ -z "$DOCTOR_ID" ] || [ "$DOCTOR_ID" = "null" ]; then
+            echo "No doctor found"; exit 3;
+          fi
+
+          DATE=$(date -I -d "+1 day" || date -I)
+          NOW=$(date -Iseconds)
+          PAYLOAD=$(jq -n --arg pid "$SESSION_ID" --arg did "$DOCTOR_ID" --arg date "$DATE" --arg now "$NOW" '{resource:"appointments",action:"create",appointment:{patientId:$pid,doctorId:$did,date:$date,timeSlot:{startTime:"10:00",endTime:"10:30"},consultationType:"video",status:"requested",createdAt:$now,updatedAt:$now}}')
+          echo "$PAYLOAD" > /tmp/apt.json
+          curl -s -X POST "$HOST/api/state" -H 'Content-Type: application/json' -d @/tmp/apt.json -o /tmp/apt-res.json
+          cat /tmp/apt-res.json
+          APT_ID=$(jq -r '.appointment.id' /tmp/apt-res.json)
+          if [ -z "$APT_ID" ] || [ "$APT_ID" = "null" ]; then
+            echo "Appointment creation failed"; exit 4;
+          fi
+
+          NOTIFS=$(jq -r '.notifications | length' /tmp/apt-res.json)
+          echo "Notifications created: $NOTIFS"
+          if [ "$NOTIFS" -lt 1 ]; then
+            echo "Expected at least 1 notification"; exit 5;
+          fi
+
+      - name: Upload sourcemaps to Sentry (optional)
+        if: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        run: |
+          set -e
+          VERSION=$(date +%s)
+          echo "Creating Sentry release $VERSION"
+          docker compose -f docker-compose.pg.yml exec -T web npx @sentry/cli@2 releases new $VERSION || true
+          echo "Uploading sourcemaps from web container"
+          docker compose -f docker-compose.pg.yml exec -T web npx @sentry/cli@2 releases files $VERSION upload-sourcemaps .next --rewrite --url-prefix "~/_next" || true
+          docker compose -f docker-compose.pg.yml exec -T web npx @sentry/cli@2 releases finalize $VERSION || true
+
+      - name: Teardown
+        if: always()
+        run: |
+          docker compose -f docker-compose.pg.yml down -v --remove-orphans

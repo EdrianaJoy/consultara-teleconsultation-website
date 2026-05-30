@@ -380,6 +380,10 @@ export default function SignUpForm({ initialRole }: SignUpFormProps) {
     'Gynecology', 'Ophthalmology', 'Psychiatry', 'General Medicine', 'ENT',
   ];
 
+  const inputClass = 'h-12 bg-white border-[#C0C3B9] focus:border-[#769382] focus:ring-[#769382] rounded-lg';
+  const selectTriggerClass = 'h-12 border-[#C0C3B9] focus:border-[#769382] rounded-lg';
+  const textareaClass = 'min-h-20 border-[#C0C3B9] focus:border-[#769382] rounded-lg resize-none';
+
   const patientMode = initialRole === 'patient';
 
   return isPatientSignup ? (
@@ -771,13 +775,13 @@ export default function SignUpForm({ initialRole }: SignUpFormProps) {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-[#2D3B35] text-sm">Email Address</Label>
-                  <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="h-12 bg-white border-[#C0C3B9] focus:border-[#769382] focus:ring-[#769382]" required />
+                  <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} required />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="password" className="text-[#2D3B35] text-sm">Password</Label>
                   <div className="relative">
-                    <Input id="password" type={showPassword ? 'text' : 'password'} placeholder="At least 8 characters" value={password} onChange={(e) => setPassword(e.target.value)} className="h-12 bg-white border-[#C0C3B9] focus:border-[#769382] focus:ring-[#769382] pr-12" required />
+                    <Input id="password" type={showPassword ? 'text' : 'password'} placeholder="At least 8 characters" value={password} onChange={(e) => setPassword(e.target.value)} className={`${inputClass} pr-12`} required />
                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#2D3B35]/50 hover:text-[#2D3B35]">
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
@@ -786,7 +790,7 @@ export default function SignUpForm({ initialRole }: SignUpFormProps) {
 
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword" className="text-[#2D3B35] text-sm">Confirm Password</Label>
-                  <Input id="confirmPassword" type="password" placeholder="Confirm your password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="h-12 bg-white border-[#C0C3B9] focus:border-[#769382] focus:ring-[#769382]" required />
+                  <Input id="confirmPassword" type="password" placeholder="Confirm your password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className={inputClass} required />
                 </div>
               </div>
 
@@ -813,27 +817,27 @@ export default function SignUpForm({ initialRole }: SignUpFormProps) {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="firstName" className="text-[#2D3B35] text-sm">First Name</Label>
-                    <Input id="firstName" placeholder="Juan" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="h-10 bg-white border-[#C0C3B9] focus:border-[#769382] focus:ring-[#769382]" required />
+                    <Input id="firstName" placeholder="Juan" value={firstName} onChange={(e) => setFirstName(e.target.value)} className={inputClass} required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="lastName" className="text-[#2D3B35] text-sm">Last Name</Label>
-                    <Input id="lastName" placeholder="Dela Cruz" value={lastName} onChange={(e) => setLastName(e.target.value)} className="h-10 bg-white border-[#C0C3B9] focus:border-[#769382] focus:ring-[#769382]" required />
+                    <Input id="lastName" placeholder="Dela Cruz" value={lastName} onChange={(e) => setLastName(e.target.value)} className={inputClass} required />
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="phone" className="text-[#2D3B35] text-sm">Mobile Number</Label>
-                  <Input id="phone" type="tel" placeholder="09171234567" value={phone} onChange={(e) => setPhone(e.target.value)} className="h-10 bg-white border-[#C0C3B9] focus:border-[#769382] focus:ring-[#769382]" required />
+                  <Input id="phone" type="tel" placeholder="09171234567" value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} required />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="dateOfBirth" className="text-[#2D3B35] text-sm">Date of Birth</Label>
-                    <Input id="dateOfBirth" type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className="h-10 bg-white border-[#C0C3B9] focus:border-[#769382] focus:ring-[#769382]" required />
+                    <Input id="dateOfBirth" type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className={inputClass} required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="gender" className="text-[#2D3B35] text-sm">Gender</Label>
-                    <select id="gender" value={gender} onChange={(e) => setGender(e.target.value)} className="w-full h-10 px-3 rounded-md bg-white border border-[#C0C3B9] focus:border-[#769382] focus:ring-[#769382] text-[#2D3B35]" required>
+                    <select id="gender" value={gender} onChange={(e) => setGender(e.target.value)} className={`w-full ${inputClass} px-3`} required>
                       <option value="">Select</option>
                       <option value="male">Male</option>
                       <option value="female">Female</option>
@@ -845,7 +849,7 @@ export default function SignUpForm({ initialRole }: SignUpFormProps) {
 
                 <div className="space-y-2">
                   <Label htmlFor="city" className="text-[#2D3B35] text-sm">City (Metro Manila)</Label>
-                  <select id="city" value={city} onChange={(e) => setCity(e.target.value)} className="w-full h-10 px-3 rounded-md bg-white border border-[#C0C3B9] focus:border-[#769382] focus:ring-[#769382] text-[#2D3B35]" required>
+                  <select id="city" value={city} onChange={(e) => setCity(e.target.value)} className={`w-full ${inputClass} px-3`} required>
                     <option value="">Select City</option>
                     {metroManilaCities.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
@@ -853,27 +857,27 @@ export default function SignUpForm({ initialRole }: SignUpFormProps) {
 
                 <div className="space-y-2">
                   <Label htmlFor="state" className="text-[#2D3B35] text-sm">Province / State</Label>
-                  <Input id="state" placeholder="Enter province or state" value={state} onChange={(e) => setState(e.target.value)} className="h-10 bg-white border-[#C0C3B9] focus:border-[#769382] focus:ring-[#769382]" />
+                  <Input id="state" placeholder="Enter province or state" value={state} onChange={(e) => setState(e.target.value)} className={inputClass} />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="barangay" className="text-[#2D3B35] text-sm">Barangay</Label>
-                  <Input id="barangay" placeholder="Enter your barangay" value={barangay} onChange={(e) => setBarangay(e.target.value)} className="h-10 bg-white border-[#C0C3B9] focus:border-[#769382] focus:ring-[#769382]" />
+                  <Input id="barangay" placeholder="Enter your barangay" value={barangay} onChange={(e) => setBarangay(e.target.value)} className={inputClass} />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="address" className="text-[#2D3B35] text-sm">Street Address</Label>
-                  <Input id="address" placeholder="House/Unit No., Street Name" value={address} onChange={(e) => setAddress(e.target.value)} className="h-10 bg-white border-[#C0C3B9] focus:border-[#769382] focus:ring-[#769382]" />
+                  <Input id="address" placeholder="House/Unit No., Street Name" value={address} onChange={(e) => setAddress(e.target.value)} className={inputClass} />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="emergencyContact" className="text-[#2D3B35] text-sm">Emergency Contact</Label>
-                  <Input id="emergencyContact" placeholder="Emergency Contact Name" value={emergencyContact} onChange={(e) => setEmergencyContact(e.target.value)} className="h-10 bg-white border-[#C0C3B9] focus:border-[#769382] focus:ring-[#769382]" />
+                  <Input id="emergencyContact" placeholder="Emergency Contact Name" value={emergencyContact} onChange={(e) => setEmergencyContact(e.target.value)} className={inputClass} />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="emergencyPhone" className="text-[#2D3B35] text-sm">Emergency Contact Number</Label>
-                  <Input id="emergencyPhone" placeholder="09123456789" value={emergencyPhone} onChange={(e) => setEmergencyPhone(e.target.value)} className="h-10 bg-white border-[#C0C3B9] focus:border-[#769382] focus:ring-[#769382]" />
+                  <Input id="emergencyPhone" placeholder="09123456789" value={emergencyPhone} onChange={(e) => setEmergencyPhone(e.target.value)} className={inputClass} />
                 </div>
 
                 {role === 'doctor' && (
@@ -883,7 +887,7 @@ export default function SignUpForm({ initialRole }: SignUpFormProps) {
 
                     <div className="space-y-2">
                       <Label htmlFor="specialization" className="text-[#2D3B35] text-sm">Specialization</Label>
-                      <select id="specialization" value={specialization} onChange={(e) => setSpecialization(e.target.value)} className="w-full h-10 px-3 rounded-md bg-white border border-[#C0C3B9] focus:border-[#769382] focus:ring-[#769382] text-[#2D3B35]" required>
+                      <select id="specialization" value={specialization} onChange={(e) => setSpecialization(e.target.value)} className={`w-full ${inputClass} px-3`} required>
                         <option value="">Select Department</option>
                         {departments.map((dept) => <option key={dept} value={dept}>{dept}</option>)}
                       </select>
@@ -891,23 +895,23 @@ export default function SignUpForm({ initialRole }: SignUpFormProps) {
 
                     <div className="space-y-2">
                       <Label htmlFor="licenseNumber" className="text-[#2D3B35] text-sm">PRC License Number</Label>
-                      <Input id="licenseNumber" placeholder="PRC-0095631" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} className="h-10 bg-white border-[#C0C3B9] focus:border-[#769382] focus:ring-[#769382]" required />
+                      <Input id="licenseNumber" placeholder="PRC-0095631" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} className={inputClass} required />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="yearsOfExperience" className="text-[#2D3B35] text-sm">Years of Experience</Label>
-                        <Input id="yearsOfExperience" type="number" min="0" placeholder="0" value={yearsOfExperience} onChange={(e) => setYearsOfExperience(e.target.value)} className="h-10 bg-white border-[#C0C3B9] focus:border-[#769382] focus:ring-[#769382]" required />
+                        <Input id="yearsOfExperience" type="number" min="0" placeholder="0" value={yearsOfExperience} onChange={(e) => setYearsOfExperience(e.target.value)} className={inputClass} required />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="consultationFee" className="text-[#2D3B35] text-sm">Consultation Fee (PHP)</Label>
-                        <Input id="consultationFee" type="number" min="0" placeholder="500" value={consultationFee} onChange={(e) => setConsultationFee(e.target.value)} className="h-10 bg-white border-[#C0C3B9] focus:border-[#769382] focus:ring-[#769382]" required />
+                        <Input id="consultationFee" type="number" min="0" placeholder="500" value={consultationFee} onChange={(e) => setConsultationFee(e.target.value)} className={inputClass} required />
                       </div>
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="education" className="text-[#2D3B35] text-sm">Education & Certifications</Label>
-                      <Input id="education" value={education} onChange={(e) => setEducation(e.target.value)} placeholder="e.g., MD from UP Manila, Fellowship at Philippine Heart Center" className="h-10 bg-white border-[#C0C3B9] focus:border-[#769382] focus:ring-[#769382]" />
+                      <Input id="education" value={education} onChange={(e) => setEducation(e.target.value)} placeholder="e.g., MD from UP Manila, Fellowship at Philippine Heart Center" className={inputClass} />
                     </div>
                   </>
                 )}

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { consultaraDb } from '@/lib/server/consultara-db';
 
 export async function GET() {
-  return NextResponse.json(consultaraDb.getAppState());
+  return NextResponse.json(await consultaraDb.getAppState());
 }
 
 export async function POST(request: NextRequest) {
@@ -15,23 +15,23 @@ export async function POST(request: NextRequest) {
   }
 
   if (resource === 'appointments' && action === 'create') {
-    return NextResponse.json(consultaraDb.createAppointment(body.appointment));
+    return NextResponse.json(await consultaraDb.createAppointment(body.appointment));
   }
 
   if (resource === 'notifications' && action === 'add') {
-    return NextResponse.json({ notification: consultaraDb.addNotification(body.notification) });
+    return NextResponse.json({ notification: await consultaraDb.addNotification(body.notification) });
   }
 
   if (resource === 'conversations' && action === 'create') {
-    return NextResponse.json({ conversation: consultaraDb.getOrCreateConversation(body.conversation.patientId, body.conversation.doctorId) });
+    return NextResponse.json({ conversation: await consultaraDb.getOrCreateConversation(body.conversation.patientId, body.conversation.doctorId) });
   }
 
   if (resource === 'messages' && action === 'add') {
-    return NextResponse.json({ message: consultaraDb.addMessage(body.message) });
+    return NextResponse.json({ message: await consultaraDb.addMessage(body.message) });
   }
 
   if (resource === 'medicalRecords' && action === 'add') {
-    return NextResponse.json({ record: consultaraDb.addMedicalRecord(body.record) });
+    return NextResponse.json({ record: await consultaraDb.addMedicalRecord(body.record) });
   }
 
   return NextResponse.json({ error: 'Unsupported action' }, { status: 400 });
@@ -47,21 +47,21 @@ export async function PATCH(request: NextRequest) {
   }
 
   if (resource === 'appointments' && action === 'update') {
-    return NextResponse.json(consultaraDb.updateAppointment(body.id, body.updates || {}));
+    return NextResponse.json(await consultaraDb.updateAppointment(body.id, body.updates || {}));
   }
 
   if (resource === 'notifications' && action === 'markRead') {
-    consultaraDb.markNotificationAsRead(body.id);
+    await consultaraDb.markNotificationAsRead(body.id);
     return NextResponse.json({ success: true });
   }
 
   if (resource === 'notifications' && action === 'markAllRead') {
-    consultaraDb.markAllNotificationsAsRead(body.userId);
+    await consultaraDb.markAllNotificationsAsRead(body.userId);
     return NextResponse.json({ success: true });
   }
 
   if (resource === 'messages' && action === 'markRead') {
-    consultaraDb.markMessagesAsRead(body.conversationId, body.userId);
+    await consultaraDb.markMessagesAsRead(body.conversationId, body.userId);
     return NextResponse.json({ success: true });
   }
 

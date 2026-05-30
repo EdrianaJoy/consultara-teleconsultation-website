@@ -12,6 +12,7 @@ import { Toaster } from 'sonner';
 import { AuthProvider } from '@/lib/auth-context';
 import { AppDataProvider } from '@/lib/app-data-context';
 import './globals.css';
+import SentryClient from '@/components/sentry-client';
 
 const geist = Geist({ 
   subsets: ['latin'],
@@ -64,6 +65,7 @@ export default function RootLayout({
       <body className="font-sans antialiased min-h-screen" suppressHydrationWarning>
         <AuthProvider>
           <AppDataProvider>
+            <SentryClient />
             {children}
             <Toaster 
               position="top-right" 

@@ -4,7 +4,7 @@ import { doctors as seedDoctors } from "@/lib/data";
 import { getDoctorPortraitForKey } from "@/lib/doctor-avatars";
 
 export async function GET() {
-  const dbDoctors = consultaraDb.getDoctors();
+  const dbDoctors = await consultaraDb.getDoctors();
   const combined = new Map<string, typeof seedDoctors[number]>();
 
   const getDoctorKey = (doctor: typeof seedDoctors[number]) => {

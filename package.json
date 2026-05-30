@@ -4,8 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:pg": "cross-env ENABLE_PG_ADAPTER=true next dev",
+    "dev:pg:docker": "sh ./scripts/dev-postgres.sh",
+    "build": "next build",
     "build": "next build",
     "start": "next start",
+    "migrate:pg": "node scripts/sqlite-to-postgres.js",
     "lint": "eslint ."
   },
   "dependencies": {
@@ -60,7 +64,10 @@
     "sonner": "^1.7.1",
     "tailwind-merge": "^3.3.1",
     "uuid": "^14.0.0",
+    "pg": "^8.11.0",
     "vaul": "^1.1.2",
+    "@sentry/react": "^8.1.0",
+    "@sentry/tracing": "^7.20.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {

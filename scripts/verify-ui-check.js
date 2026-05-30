@@ -1,6 +1,6 @@
 (async () => {
   try {
-    const base = 'http://127.0.0.1:3000';
+    const base = process.env.BASE_URL || 'http://127.0.0.1:3001';
     const s = await fetch(`${base}/api/state`);
     const st = await s.json();
     const doctorsRes = await fetch(`${base}/api/doctors`);

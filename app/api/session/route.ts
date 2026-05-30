@@ -20,7 +20,7 @@ export async function GET() {
     return NextResponse.json({ user: null, patientProfile: null, doctorProfile: null, isAuthenticated: false });
   }
 
-  const payload = consultaraDb.getSession(sessionId);
+  const payload = await consultaraDb.getSession(sessionId);
   return NextResponse.json(sessionResponse(payload));
 }
 
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (action === 'signin') {
-    const result = consultaraDb.signIn(String(body.email || ''), String(body.password || ''));
+    const result = await consultaraDb.signIn(String(body.email || ''), String(body.password || ''));
     if (!result.success || !result.session) {
       return NextResponse.json(result, { status: 401 });
     }
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (action === 'signup') {
-    const result = consultaraDb.signUp(String(body.email || ''), String(body.password || ''), body.role);
+    const result = await consultaraDb.signUp(String(body.email || ''), String(body.password || ''), body.role);
     if (!result.success || !result.session) {
       return NextResponse.json(result, { status: 400 });
     }
@@ -54,12 +54,12 @@ export async function POST(request: NextRequest) {
   }
 
   if (action === 'register') {
-    const signupResult = consultaraDb.signUp(String(body.email || ''), String(body.password || ''), body.role);
+    const signupResult = await consultaraDb.signUp(String(body.email || ''), String(body.password || ''), body.role);
     if (!signupResult.success || !signupResult.session?.user) {
       return NextResponse.json(signupResult, { status: 400 });
     }
 
-    const payload = consultaraDb.completeRegistration(signupResult.session.user.id, body.profileData || {});
+    const payload = await consultaraDb.completeRegistration(signupResult.session.user.id, body.profileData || {});
     cookieStore.set(SESSION_COOKIE, signupResult.session.user.id, { path: '/', sameSite: 'lax' });
     return NextResponse.json({ success: true, ...sessionResponse(payload) });
   }
@@ -71,23 +71,23 @@ export async function POST(request: NextRequest) {
 
   if (action === 'signout') {
     cookieStore.delete(SESSION_COOKIE);
-    consultaraDb.signOut();
+    await consultaraDb.signOut();
     return NextResponse.json({ success: true });
   }
 
   if (action === 'selectRole') {
-    const payload = consultaraDb.selectRole(sessionId, body.role);
+    const payload = await consultaraDb.selectRole(sessionId, body.role);
     return NextResponse.json({ success: true, ...sessionResponse(payload) });
   }
 
   if (action === 'updatePatientProfile') {
-    const payload = consultaraDb.upsertPatientProfile(sessionId, body.profile || {});
+    const payload = await consultaraDb.upsertPatientProfile(sessionId, body.profile || {});
     return NextResponse.json({ success: true, ...sessionResponse(payload) });
   }
 
   if (action === 'updateDoctorProfile') {
     try {
-      const payload = consultaraDb.upsertDoctorProfile(sessionId, body.profile || {});
+      const payload = await consultaraDb.upsertDoctorProfile(sessionId, body.profile || {});
       return NextResponse.json({ success: true, ...sessionResponse(payload) });
     } catch (err: any) {
       return NextResponse.json({ error: err?.message || 'Failed to update profile' }, { status: 400 });
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
 
   if (action === 'completeRegistration') {
     try {
-      const payload = consultaraDb.completeRegistration(sessionId, body.profileData || {});
+      const payload = await consultaraDb.completeRegistration(sessionId, body.profileData || {});
       return NextResponse.json({ success: true, ...sessionResponse(payload) });
     } catch (err: any) {
       return NextResponse.json({ error: err?.message || 'Failed to complete registration' }, { status: 400 });

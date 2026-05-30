@@ -1,0 +1,18 @@
+version: '3.8'
+services:
+  web:
+    build: .
+    image: consultara-web:latest
+    ports:
+      - "3001:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    volumes:
+      - ./public:/app/public:ro
+      - ./data:/app/data
+    restart: unless-stopped
+
+volumes:
+  data:
+    driver: local

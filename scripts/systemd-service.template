@@ -1,0 +1,22 @@
+[Unit]
+Description=Consultara Next.js App
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/consultara
+Environment=NODE_ENV=production
+Environment=PORT=3001
+ExecStart=/usr/bin/npm start -- -p 3001
+Restart=always
+RestartSec=5
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+
+# Copy this file to /etc/systemd/system/consultara.service and run:
+# sudo systemctl daemon-reload
+# sudo systemctl enable consultara
+# sudo systemctl start consultara

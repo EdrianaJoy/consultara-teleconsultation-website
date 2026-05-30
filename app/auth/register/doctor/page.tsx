@@ -57,6 +57,8 @@ export default function DoctorRegistrationPage() {
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [isLoading, setIsLoading] = useState(false);
 
+  const inputClass = 'h-12 rounded-lg border border-[#e6e6e6] px-4 placeholder-[#9aa69a] focus:border-[#6b8f79] focus:ring-0';
+
   // Form state
   const [formData, setFormData] = useState<Partial<DoctorProfile> & { dateOfBirth?: string }>({
     firstName: '',
@@ -222,51 +224,63 @@ export default function DoctorRegistrationPage() {
     { number: 4, title: 'Availability', icon: Clock },
   ];
 
+  const progressPercent = ((currentStep - 1) / (steps.length - 1)) * 100;
+
   return (
-    <div className="min-h-screen bg-ivory py-8 px-4">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-[#f3efe6] pt-14 pb-12 px-4 flex flex-col items-center">
+      <div className="w-full max-w-3xl">
         {/* Header */}
-        <div className="flex flex-col items-center mb-8">
+        <div className="flex flex-col items-center mb-10">
           <Image
-            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/ConsulTara%20Logo-oqtBESzen2QQnxkVKzgc7RxAQEbHnb.png"
-            alt="ConsulTara Logo"
-            width={60}
-            height={60}
-            className="mb-3"
+            src="/professional-doctors/doc-007.svg"
+            alt="ConsulTara emblem"
+            width={84}
+            height={84}
+            className="mb-4"
           />
-          <h1 className="text-xl font-semibold text-sage">ConsulTara</h1>
-          <p className="text-[#2D3B35]/70 mt-2">Complete your doctor profile</p>
+          <h1 className="text-2xl sm:text-3xl font-semibold text-[#6b8f79]">ConsulTara</h1>
+          <p className="text-sm text-[#2D3B35]/60 mt-2">Complete your doctor profile</p>
         </div>
 
         {/* Progress Steps */}
-        <div className="flex items-center justify-center mb-8">
-          {steps.map((step, index) => (
-            <div key={step.number} className="flex items-center">
-              <div className={`flex items-center gap-2 ${currentStep >= step.number ? 'text-sage' : 'text-mist'}`}>
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors ${
-                  currentStep >= step.number 
-                    ? 'bg-sage border-sage text-white' 
-                    : 'border-mist text-mist'
-                }`}>
-                  <step.icon className="w-5 h-5" />
-                </div>
-                <span className="hidden sm:block text-sm font-medium">{step.title}</span>
+        <div className="w-full max-w-2xl mx-auto mb-8">
+          <div className="relative flex items-center justify-center gap-6">
+            {/* Left active chip */}
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[#6b8f79] text-white">
+                <User className="w-5 h-5" />
               </div>
-              {index < steps.length - 1 && (
-                <div className={`w-8 sm:w-12 h-0.5 mx-2 ${currentStep > step.number ? 'bg-sage' : 'bg-mist'}`} />
-              )}
+              <div className="text-sm text-[#6b8f79] font-medium">Personal Info</div>
             </div>
-          ))}
+
+            {/* Progress connectors and remaining steps */}
+            <div className="flex-1 max-w-2xl">
+              <div className="relative">
+                <div className="h-1 rounded-full bg-[#e6e6e6]" />
+                <div className="absolute left-0 top-0 h-1 rounded-full bg-[#6b8f79]" style={{ width: `${progressPercent}%` }} />
+                <div className="flex items-center justify-between mt-3">
+                  {steps.map((step, i) => (
+                    <div key={step.number} className="flex flex-col items-center">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center border ${currentStep > step.number ? 'bg-[#6b8f79] border-[#6b8f79] text-white' : 'border-[#e6e6e6] text-[#9aa69a]'}`}>
+                        <step.icon className="w-4 h-4" />
+                      </div>
+                      <span className="mt-2 text-xs text-[#2D3B35]/60">{step.title}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Form Card */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8">
+        <div className="bg-white rounded-3xl shadow-lg p-8 sm:p-12 border border-[#f0ede9] max-w-3xl mx-auto">
           {/* Step 1: Personal Information */}
           {currentStep === 1 && (
             <div className="space-y-6">
               <div className="text-center mb-6">
-                <h2 className="text-xl font-semibold text-[#2D3B35]">Personal Information</h2>
-                <p className="text-sm text-[#2D3B35]/70">Tell us about yourself</p>
+                <h2 className="text-lg sm:text-xl font-semibold text-[#23302c]">Personal Information</h2>
+                <p className="text-sm text-[#2D3B35]/60">Tell us about yourself</p>
               </div>
 
               <div className="grid sm:grid-cols-2 gap-4">
@@ -277,7 +291,7 @@ export default function DoctorRegistrationPage() {
                     value={formData.firstName}
                     onChange={(e) => updateFormData('firstName', e.target.value)}
                     placeholder="Enter your first name"
-                    className="h-11 border-mist focus:border-sage"
+                    className={inputClass}
                   />
                 </div>
                 <div className="space-y-2">
@@ -287,7 +301,7 @@ export default function DoctorRegistrationPage() {
                     value={formData.lastName}
                     onChange={(e) => updateFormData('lastName', e.target.value)}
                     placeholder="Enter your last name"
-                    className="h-11 border-mist focus:border-sage"
+                    className={inputClass}
                   />
                 </div>
               </div>
@@ -300,7 +314,7 @@ export default function DoctorRegistrationPage() {
                   value={formData.phone}
                   onChange={(e) => updateFormData('phone', e.target.value)}
                   placeholder="+63 9XX XXX XXXX"
-                  className="h-11 border-mist focus:border-sage"
+                  className={inputClass}
                 />
               </div>
 
@@ -311,7 +325,7 @@ export default function DoctorRegistrationPage() {
                   type="date"
                   value={formData.dateOfBirth || ''}
                   onChange={(e) => updateFormData('dateOfBirth', e.target.value)}
-                  className="h-11 border-mist focus:border-sage"
+                  className={inputClass}
                 />
               </div>
 
@@ -322,7 +336,7 @@ export default function DoctorRegistrationPage() {
                   value={formData.bio}
                   onChange={(e) => updateFormData('bio', e.target.value)}
                   placeholder="Tell patients about yourself, your experience, and approach to care..."
-                  className="min-h-24 border-mist focus:border-sage resize-none"
+                  className={`min-h-24 resize-none ${inputClass}`}
                 />
               </div>
             </div>
