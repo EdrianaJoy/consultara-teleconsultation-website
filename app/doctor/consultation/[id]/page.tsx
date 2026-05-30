@@ -189,6 +189,7 @@ export default function ConsultationSessionPage() {
       doctorId: user?.id || "",
       doctorName: `Dr. ${(user as any)?.lastName || "Doctor"}`,
       date: new Date().toISOString().split("T")[0],
+      type: "consultations",
       diagnosis: notes.diagnosis,
       symptoms: notes.symptoms.split(",").map(s => s.trim()),
       treatment: notes.treatment,
@@ -330,7 +331,7 @@ export default function ConsultationSessionPage() {
                     className="w-12 h-12 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors"
                     aria-label="End call"
                   >
-                    <Phone size={20} className="rotate-[135deg]" />
+                    <Phone size={20} className="rotate-135" />
                   </button>
                 </div>
               </>
@@ -338,7 +339,7 @@ export default function ConsultationSessionPage() {
           </div>
 
           {/* Chat Sidebar */}
-          <div className="bg-card rounded-xl border border-border flex flex-col h-[500px] lg:h-auto">
+          <div className="bg-card rounded-xl border border-border flex flex-col h-125 lg:h-auto">
             <div className="p-4 border-b border-border">
               <h3 className="font-semibold text-foreground">Chat</h3>
             </div>

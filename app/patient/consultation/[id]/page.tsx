@@ -39,6 +39,24 @@ export default function PatientConsultationPage() {
   const { user } = useAuth();
   const { appointments, updateAppointment, isLoading } = useAppData();
   const consultationId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const [doctorCatalog, setDoctorCatalog] = useState(doctors);
+
+  useEffect(() => {
+    const loadDoctors = async () => {
+      try {
+        const response = await fetch("/api/doctors", { cache: "no-store" });
+        if (!response.ok) return;
+        const payload = await response.json() as { doctors?: typeof doctors };
+        if (payload.doctors && payload.doctors.length > 0) {
+          setDoctorCatalog(payload.doctors);
+        }
+      } catch (error) {
+        console.error("Failed to load doctors:", error);
+      }
+    };
+
+    void loadDoctors();
+  }, []);
 
   const patientAppointments = user
     ? appointments.filter(appointment => appointment.patientId === user.id)
@@ -48,7 +66,7 @@ export default function PatientConsultationPage() {
     || patientAppointments.find(apt => apt.status === "confirmed")
     || patientAppointments[0]
     || null;
-  const doctor = appointment ? doctors.find(d => d.id === appointment.doctorId) : null;
+  const doctor = appointment ? doctorCatalog.find(d => d.id === appointment.doctorId) : null;
 
   // Video controls
   const [isVideoOn, setIsVideoOn] = useState(true);

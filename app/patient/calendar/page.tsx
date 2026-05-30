@@ -8,7 +8,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   ChevronLeft, 
@@ -23,6 +23,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { useAppData } from "@/lib/app-data-context";
 import { doctors } from "@/lib/data";
+import type { DoctorProfile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -58,6 +59,24 @@ export default function CalendarPage() {
   const { appointments, cancelAppointment } = useAppData();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [doctorCatalog, setDoctorCatalog] = useState<DoctorProfile[]>(doctors);
+
+  useEffect(() => {
+    const loadDoctors = async () => {
+      try {
+        const response = await fetch("/api/doctors", { cache: "no-store" });
+        if (!response.ok) return;
+        const payload = await response.json() as { doctors?: DoctorProfile[] };
+        if (payload.doctors && payload.doctors.length > 0) {
+          setDoctorCatalog(payload.doctors);
+        }
+      } catch (error) {
+        console.error("Failed to load doctors:", error);
+      }
+    };
+
+    void loadDoctors();
+  }, []);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -226,7 +245,7 @@ export default function CalendarPage() {
               </p>
             ) : (
               (selectedDate ? selectedDateAppointments : patientAppointments.filter(a => a.status !== "cancelled").slice(0, 5)).map((apt) => {
-                const doctor = doctors.find(d => d.id === apt.doctorId);
+                const doctor = doctorCatalog.find(d => d.id === apt.doctorId);
                 const doctorName = doctor ? `Dr. ${doctor.firstName} ${doctor.lastName}` : "Doctor";
                 return (
                   <div
@@ -240,7 +259,7 @@ export default function CalendarPage() {
                     )}
                   >
                     <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-full bg-accent overflow-hidden flex-shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-accent overflow-hidden shrink-0">
                         {doctor?.avatar ? (
                           <img 
                             src={doctor.avatar} 

@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -42,6 +42,7 @@ export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const passwordRef = useRef<HTMLInputElement | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -130,6 +131,7 @@ export default function SignInPage() {
               <div className="relative">
                 <Input
                   id="password"
+                  ref={passwordRef}
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Enter password"
                   value={password}
@@ -138,7 +140,15 @@ export default function SignInPage() {
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
+                  onClick={() => {
+                    const next = !showPassword;
+                    setShowPassword(next);
+                    try {
+                      if (passwordRef.current) passwordRef.current.type = next ? 'text' : 'password';
+                    } catch (e) {
+                      // ignore
+                    }
+                  }}
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-[#2D3B35]/50 hover:text-[#2D3B35] transition-colors"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >

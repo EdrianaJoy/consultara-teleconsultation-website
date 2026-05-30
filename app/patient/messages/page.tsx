@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
  */
 export default function MessagesPage() {
   const { user } = useAuth();
-  const { conversations, messages, addMessage } = useAppData();
+  const { conversations, messages, addMessage, markMessagesAsRead } = useAppData();
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -56,6 +56,11 @@ export default function MessagesPage() {
       setSelectedConversation(latestConversationId);
     }
   }, [latestConversationId, selectedConversation]);
+
+  useEffect(() => {
+    if (!selectedConversation || !user?.id) return;
+    markMessagesAsRead(selectedConversation, user.id);
+  }, [markMessagesAsRead, selectedConversation, user?.id]);
 
   // Filter conversations by search
   const filteredConversations = patientConversations.filter(conv => {

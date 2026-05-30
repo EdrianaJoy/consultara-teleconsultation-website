@@ -94,7 +94,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         const response = await apiRequest<Pick<AppDataState, 'appointments' | 'medicalRecords' | 'notifications' | 'conversations' | 'messages' | 'prescriptions'>>('/api/state');
         setState({
           appointments: response.appointments,
-          medicalRecords: response.medicalRecords,
+          medicalRecords: response.medicalRecords.map(record => ({
+            ...record,
+            type: record.type === 'consultation' ? 'consultations' : record.type,
+          })),
           notifications: response.notifications,
           conversations: response.conversations.map(normalizeConversation),
           messages: response.messages.map(normalizeMessage),
@@ -105,7 +108,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         console.error('Error loading app data:', error);
         setState({
           appointments: sampleAppointments,
-          medicalRecords: sampleMedicalRecords,
+          medicalRecords: sampleMedicalRecords.map(record => ({
+            ...record,
+            type: record.type === 'consultation' ? 'consultations' : record.type,
+          })),
           notifications: sampleNotifications,
           conversations: sampleConversations.map(normalizeConversation),
           messages: sampleMessages.map(normalizeMessage),
@@ -150,10 +156,18 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       ),
     }));
 
-    void apiRequest<{ appointment: Appointment | null; notifications?: Notification[] }>('/api/state', {
+    void apiRequest<{ appointment: Appointment | null; notifications?: Notification[]; deletedMedicalRecordIds?: string[] }>('/api/state', {
       method: 'PATCH',
       body: JSON.stringify({ resource: 'appointments', action: 'update', id, updates }),
     }).then(response => {
+      if (response.deletedMedicalRecordIds?.length) {
+        setState(prev => ({
+          ...prev,
+          medicalRecords: prev.medicalRecords.filter(record => !response.deletedMedicalRecordIds?.includes(record.id)),
+          prescriptions: prev.prescriptions.filter(prescription => !response.deletedMedicalRecordIds?.includes(prescription.consultationId)),
+        }));
+      }
+
       if (!response.notifications?.length) {
         return;
       }
@@ -316,7 +330,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       ...record,
       id: `record-${Date.now()}`,
       title: record.title || record.diagnosis,
-      type: record.type || 'consultation',
+      type: record.type || 'consultations',
       createdAt: new Date().toISOString(),
     };
 

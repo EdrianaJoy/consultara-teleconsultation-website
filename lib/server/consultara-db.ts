@@ -53,6 +53,7 @@ type AppStatePayload = {
 type AppointmentUpdateResult = {
   appointment: Appointment | null;
   notifications: Notification[];
+  deletedMedicalRecordIds: string[];
 };
 
 let db: DatabaseInstance | null = null;
@@ -518,6 +519,7 @@ function rowToPrescription(row: any, patientId: string, doctorId: string): Presc
 }
 
 function rowToMedicalRecord(row: any): MedicalRecord {
+  const recordType = row.record_type || 'consultations';
   return {
     id: row.id,
     patientId: row.patient_id,
@@ -526,7 +528,7 @@ function rowToMedicalRecord(row: any): MedicalRecord {
     doctorName: row.doctor_name,
     date: row.date,
     title: row.title || row.diagnosis,
-    type: (row.record_type || 'consultation') as MedicalRecord['type'],
+    type: (recordType === 'consultation' ? 'consultations' : recordType) as MedicalRecord['type'],
     diagnosis: row.diagnosis,
     symptoms: row.symptoms_json ? JSON.parse(row.symptoms_json) : [],
     treatment: row.treatment,
@@ -629,6 +631,40 @@ function buildAppointmentUpdateNotifications(previous: Appointment, next: Appoin
   }
 
   return [];
+}
+
+function deleteMedicalRecordsByConsultationId(consultationId: string): string[] {
+  const database = getDb();
+  const rows = database.prepare('SELECT id FROM medical_records WHERE consultation_id = ?').all(consultationId) as Array<{ id: string }>;
+  if (rows.length === 0) {
+    return [];
+  }
+
+  database.prepare('DELETE FROM medical_records WHERE consultation_id = ?').run(consultationId);
+  return rows.map(row => row.id);
+}
+
+function pruneCancelledConsultationRecords(): string[] {
+  const database = getDb();
+  const rows = database.prepare(`
+    SELECT mr.id
+    FROM medical_records mr
+    JOIN appointments a ON a.id = mr.consultation_id
+    WHERE a.status = 'cancelled'
+  `).all() as Array<{ id: string }>;
+
+  if (rows.length === 0) {
+    return [];
+  }
+
+  database.prepare(`
+    DELETE FROM medical_records
+    WHERE consultation_id IN (
+      SELECT id FROM appointments WHERE status = 'cancelled'
+    )
+  `).run();
+
+  return rows.map(row => row.id);
 }
 
 function rowToConversation(row: any, lastMessage?: Message | null): Conversation {
@@ -790,6 +826,18 @@ export const consultaraDb = {
 
   signOut(): void {
     return;
+  },
+
+  resetPassword(email: string, newPassword: string): { success: boolean; error?: string } {
+    const user = getUserByEmail(email);
+    if (!user) {
+      return { success: false, error: 'No account found with this email.' };
+    }
+
+    const database = getDb();
+    const passwordHash = hashPassword(newPassword);
+    database.prepare('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?').run(passwordHash, new Date().toISOString(), user.user.id);
+    return { success: true };
   },
 
   upsertPatientProfile(userId: string, profileData: Partial<PatientProfile>): SessionPayload {
@@ -1007,6 +1055,8 @@ export const consultaraDb = {
   getAppState(): AppStatePayload {
     const database = getDb();
 
+    pruneCancelledConsultationRecords();
+
     const appointmentRows = database.prepare('SELECT * FROM appointments ORDER BY date ASC, start_time ASC').all();
     const medicalRecordRows = database.prepare('SELECT * FROM medical_records ORDER BY date DESC, created_at DESC').all();
     const notificationRows = database.prepare('SELECT * FROM notifications ORDER BY created_at DESC').all();
@@ -1080,7 +1130,7 @@ export const consultaraDb = {
     const database = getDb();
     const current = database.prepare('SELECT * FROM appointments WHERE id = ?').get(id);
     if (!current) {
-      return { appointment: null, notifications: [] };
+      return { appointment: null, notifications: [], deletedMedicalRecordIds: [] };
     }
 
     const previousAppointment = rowToAppointment(current);
@@ -1117,11 +1167,15 @@ export const consultaraDb = {
     );
 
     const notifications = buildAppointmentUpdateNotifications(previousAppointment, nextAppointment);
+    const deletedMedicalRecordIds = nextAppointment.status === 'cancelled'
+      ? deleteMedicalRecordsByConsultationId(nextAppointment.id)
+      : [];
     const persistedNotifications = notifications.map(notification => consultaraDb.addNotification(notification));
 
     return {
       appointment: nextAppointment,
       notifications: persistedNotifications,
+      deletedMedicalRecordIds,
     };
   },
 
@@ -1132,7 +1186,7 @@ export const consultaraDb = {
       ...record,
       id: `record-${crypto.randomUUID()}`,
       title: record.title || record.diagnosis,
-      type: record.type || 'consultation',
+      type: record.type || 'consultations',
       createdAt: now,
     };
 
@@ -1150,7 +1204,7 @@ export const consultaraDb = {
       nextRecord.doctorName,
       nextRecord.date,
       nextRecord.title || null,
-      nextRecord.type || 'consultation',
+      nextRecord.type || 'consultations',
       nextRecord.diagnosis,
       JSON.stringify(nextRecord.symptoms || []),
       nextRecord.treatment,

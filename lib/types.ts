@@ -258,7 +258,7 @@ export interface MedicalRecord {
   doctorName: string;
   date: string;
   title?: string;
-  type?: 'consultation' | 'prescription' | 'lab_result';
+  type?: 'consultations' | 'prescription' | 'lab_result';
   diagnosis: string;
   symptoms: string[];
   treatment: string;

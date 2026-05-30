@@ -43,9 +43,7 @@ export default function MedicalRecordsPage() {
   // Get patient-specific records
   const patientRecords = medicalRecords.filter(r => r.patientId === user?.id);
   const patientPrescriptions = prescriptions.filter(p => p.patientId === user?.id);
-  const completedAppointments = appointments.filter(
-    a => a.patientId === user?.id && a.status === "completed"
-  );
+  const consultationRecords = patientRecords.filter(record => record.type === "consultations");
 
   /**
    * Filter records based on active tab and search
@@ -94,7 +92,7 @@ export default function MedicalRecordsPage() {
               <Stethoscope className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{completedAppointments.length}</p>
+              <p className="text-2xl font-bold text-foreground">{consultationRecords.length}</p>
               <p className="text-sm text-muted-foreground">Consultations</p>
             </div>
           </div>
@@ -197,7 +195,7 @@ export default function MedicalRecordsPage() {
               >
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   <div className="flex gap-4">
-                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-none">
                       {record.type === "prescription" ? (
                         <Pill className="w-6 h-6 text-primary" />
                       ) : record.type === "lab_result" ? (
@@ -225,7 +223,7 @@ export default function MedicalRecordsPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex gap-2 sm:flex-shrink-0">
+                  <div className="flex gap-2 sm:flex-none">
                     <Button variant="outline" size="sm">
                       <Eye size={16} className="mr-2" />
                       View

@@ -230,7 +230,7 @@ export default function DoctorProfilePage({
       doctorName: fullName,
       date: selectedDate,
       title: "Scheduled Consultation",
-      type: "consultation",
+      type: "consultations",
       diagnosis: "Pending consultation",
       symptoms: [reason || "General Consultation"],
       treatment: "To be determined",
