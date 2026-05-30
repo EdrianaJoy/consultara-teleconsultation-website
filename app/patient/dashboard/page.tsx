@@ -256,9 +256,12 @@ export default function PatientDashboard() {
           {/* Consulty Robot Image */}
           <div className="hidden lg:block w-48 h-48 flex-shrink-0">
             <img
-              src="/consulty-robot.png"
+              src="/consulty-robot@600.png"
+              srcSet="/consulty-robot@300.png 300w, /consulty-robot@600.png 600w, /consulty-robot@1200.png 1200w"
+              sizes="(max-width: 1024px) 300px, 600px"
               alt="Consulty AI Assistant"
               className="w-full h-full object-contain"
+              loading="lazy"
             />
           </div>
         </div>
