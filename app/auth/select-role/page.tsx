@@ -48,16 +48,31 @@ export default function SelectRolePage({ allowUnauthenticated = true }: SelectRo
     // If no role is set yet, keep the role selection step visible.
   }, [allowUnauthenticated, user, router, patientProfile, doctorProfile]);
 
-  const handleRoleSelect = (role: 'patient' | 'doctor') => {
+  const handleRoleSelect = async (role: 'patient' | 'doctor') => {
+    // If the user is signed in, update server-side role first so session state is consistent.
     if (user) {
-      void selectRole(role);
+      try {
+        await selectRole(role);
+      } catch (err) {
+        // swallow errors — still navigate to signup so user can complete profile if needed
+        console.error('selectRole failed', err);
+      }
     }
-    
-    // Redirect to the public signup flow with the selected role prefilled.
-    if (role === 'patient') {
-      router.push('/auth/signup?role=patient');
+
+    // Redirect: signed-in users go to the role-specific register page;
+    // unauthenticated users go to the signup flow with role prefilled.
+    if (user) {
+      if (role === 'patient') {
+        router.push('/auth/register/patient');
+      } else {
+        router.push('/auth/register/doctor');
+      }
     } else {
-      router.push('/auth/signup?role=doctor');
+      if (role === 'patient') {
+        router.push('/auth/signup?role=patient');
+      } else {
+        router.push('/auth/signup?role=doctor');
+      }
     }
   };
 
@@ -90,7 +105,8 @@ export default function SelectRolePage({ allowUnauthenticated = true }: SelectRo
           <div className="grid md:grid-cols-2 gap-6">
             {/* Patient Option */}
             <button
-              onClick={() => handleRoleSelect('patient')}
+              type="button"
+              onClick={() => void handleRoleSelect('patient')}
               className="group relative p-6 rounded-xl border-2 border-[#C0C3B9] hover:border-[#769382] bg-white hover:bg-[#769382]/5 transition-all duration-300 text-left"
             >
               <div className="flex flex-col items-center text-center">
@@ -112,7 +128,8 @@ export default function SelectRolePage({ allowUnauthenticated = true }: SelectRo
 
             {/* Doctor Option */}
             <button
-              onClick={() => handleRoleSelect('doctor')}
+              type="button"
+              onClick={() => void handleRoleSelect('doctor')}
               className="group relative p-6 rounded-xl border-2 border-[#C0C3B9] hover:border-[#769382] bg-white hover:bg-[#769382]/5 transition-all duration-300 text-left"
             >
               <div className="flex flex-col items-center text-center">

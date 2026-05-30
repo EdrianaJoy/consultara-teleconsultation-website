@@ -401,8 +401,11 @@ export default function ConsultyPage() {
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-full overflow-hidden bg-white flex items-center justify-center">
             <img
-              src="https://img.icons8.com/fluency/96/robot.png"
+              src="/consulty-robot@300.png"
+              srcSet="/consulty-robot@300.png 300w, /consulty-robot@600.png 600w, /consulty-robot@1200.png 1200w"
+              sizes="48px"
               alt="Consulty AI"
+              loading="lazy"
               className="w-full h-full object-contain"
             />
           </div>
@@ -422,19 +425,22 @@ export default function ConsultyPage() {
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted/30">
-        {messages.map((message) => (
-          <div key={message.id}>
+        {messages.map((message, index) => (
+          <div key={`${message.id}-${index}`}>
             <div
               className={cn(
                 "flex gap-3",
                 message.role === "user" ? "justify-end" : "justify-start"
               )}
             >
-              {message.role === "assistant" && (
+                {message.role === "assistant" && (
                 <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
                   <img
-                    src="https://img.icons8.com/fluency/96/robot.png"
+                    src="/consulty-robot@300.png"
+                    srcSet="/consulty-robot@300.png 300w, /consulty-robot@600.png 600w"
+                    sizes="32px"
                     alt="Consulty"
+                    loading="lazy"
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -576,8 +582,11 @@ export default function ConsultyPage() {
           <div className="flex gap-3">
             <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
               <img
-                src="https://img.icons8.com/fluency/96/robot.png"
+                src="/consulty-robot@300.png"
+                srcSet="/consulty-robot@300.png 300w, /consulty-robot@600.png 600w"
+                sizes="32px"
                 alt="Consulty"
+                loading="lazy"
                 className="w-full h-full object-cover"
               />
             </div>

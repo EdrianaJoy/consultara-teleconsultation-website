@@ -249,7 +249,13 @@ export default function SignUpForm({ initialRole }: SignUpFormProps) {
       toast.error('Passwords do not match');
       return;
     }
-    // Move to the first profile step; registration will occur after profiles are complete.
+
+    if (role === 'doctor' || initialRole === 'doctor') {
+      setStep('profile');
+      return;
+    }
+
+    // Move to the first patient profile step; registration will occur after profiles are complete.
     setStep('profile-1');
   };
 
@@ -507,6 +513,7 @@ export default function SignUpForm({ initialRole }: SignUpFormProps) {
                     </SelectContent>
                   </Select>
                 </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="state" className="text-foreground">Province/Region *</Label>
                   <Input id="state" value={state} onChange={(e) => setState(e.target.value)} placeholder="Metro Manila" className="h-11 border-mist focus:border-sage" />
@@ -692,36 +699,20 @@ export default function SignUpForm({ initialRole }: SignUpFormProps) {
       </div>
     </div>
   ) : (
-    <div className="min-h-screen flex">
-      <div className="hidden lg:block lg:w-1/2 relative">
-        <Image
-          src="https://images.unsplash.com/photo-1551190822-a9333d879b1f?w=1200&h=1600&fit=crop"
-          alt="Healthcare professionals"
-          fill
-          className="object-cover"
-          priority
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-        <div className="absolute bottom-8 left-8 right-8 text-white">
-          <h2 className="text-3xl font-bold mb-2">Join ConsulTara</h2>
-          <p className="text-white/80">Access quality healthcare from anywhere in Metro Manila.</p>
+    <div className="min-h-screen bg-ivory py-8 px-4">
+      <div className="max-w-2xl mx-auto">
+        <div className="flex flex-col items-center mb-8">
+          <Image
+            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/ConsulTara%20Logo-oqtBESzen2QQnxkVKzgc7RxAQEbHnb.png"
+            alt="ConsulTara Logo"
+            width={72}
+            height={72}
+            className="mb-2"
+          />
+          <h1 className="text-2xl font-semibold text-[#769382]">ConsulTara</h1>
         </div>
-      </div>
 
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-8 bg-[#F3EFE3]">
-        <div className="w-full max-w-2xl">
-          <div className="flex flex-col items-center mb-8">
-            <Image
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/ConsulTara%20Logo-oqtBESzen2QQnxkVKzgc7RxAQEbHnb.png"
-              alt="ConsulTara Logo"
-              width={72}
-              height={72}
-              className="mb-2"
-            />
-            <h1 className="text-2xl font-semibold text-[#769382]">ConsulTara</h1>
-          </div>
-
-          <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8">
+        <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8">
           {step === 'role' && (
             <div className="space-y-6">
               <div className="text-center">
@@ -731,7 +722,8 @@ export default function SignUpForm({ initialRole }: SignUpFormProps) {
 
               <div className="grid md:grid-cols-2 gap-6">
                 <button
-                  onClick={() => handleRoleSelect('patient')}
+                  type="button"
+                  onClick={() => router.push('/auth/register/patient')}
                   className="group relative p-6 rounded-xl border-2 border-[#C0C3B9] hover:border-[#769382] bg-white hover:bg-[#769382]/5 transition-all duration-300 text-left"
                 >
                   <div className="flex flex-col items-center text-center">
@@ -745,7 +737,8 @@ export default function SignUpForm({ initialRole }: SignUpFormProps) {
                 </button>
 
                 <button
-                  onClick={() => handleRoleSelect('doctor')}
+                  type="button"
+                  onClick={() => router.push('/auth/register/doctor')}
                   className="group relative p-6 rounded-xl border-2 border-[#C0C3B9] hover:border-[#769382] bg-white hover:bg-[#769382]/5 transition-all duration-300 text-left"
                 >
                   <div className="flex flex-col items-center text-center">
@@ -798,24 +791,12 @@ export default function SignUpForm({ initialRole }: SignUpFormProps) {
               </div>
 
               <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    if (initialRole) {
-                      router.push('/auth/select-role');
-                      return;
-                    }
-                    setStep('role');
-                  }}
-                  className="flex-1 h-12 border-[#C0C3B9]"
-                >
+                <Button type="button" variant="outline" onClick={handleBack} className="flex-1 h-12 border-[#C0C3B9]">
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   {initialRole ? 'Change Role' : 'Back'}
                 </Button>
                 <Button type="submit" disabled={isLoading} className="flex-1 h-12 bg-[#769382] hover:bg-[#769382]/90 text-white">
-                  {isLoading ? 'Creating Account...' : 'Continue'}
-                  <ArrowRight className="w-4 h-4 ml-2" />
+                  {isLoading ? 'Creating Account...' : initialRole === 'patient' ? 'Next' : 'Create Account'}
                 </Button>
               </div>
             </form>
@@ -825,9 +806,7 @@ export default function SignUpForm({ initialRole }: SignUpFormProps) {
             <form onSubmit={handleProfileSubmit} className="space-y-6">
               <div className="text-center">
                 <h2 className="text-2xl font-bold text-[#2D3B35] mb-2">{roleLabel} Profile Details</h2>
-                <p className="text-[#2D3B35]/70">
-                  {role === 'doctor' ? 'Complete your medical profile' : 'Complete your profile'}
-                </p>
+                <p className="text-[#2D3B35]/70">{role === 'doctor' ? 'Complete your medical profile' : 'Complete your profile'}</p>
               </div>
 
               <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
@@ -965,6 +944,5 @@ export default function SignUpForm({ initialRole }: SignUpFormProps) {
           </div>
         </div>
       </div>
-    </div>
   );
 }

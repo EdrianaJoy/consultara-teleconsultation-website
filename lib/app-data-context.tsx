@@ -15,7 +15,7 @@ interface AppDataState {
 }
 
 interface AppDataContextType extends AppDataState {
-  createAppointment: (appointment: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>) => Appointment;
+  createAppointment: (appointment: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Appointment>;
   updateAppointment: (id: string, updates: Partial<Appointment>) => void;
   updateAppointmentStatus: (id: string, status: AppointmentStatus) => void;
   cancelAppointment: (id: string) => void;
@@ -126,7 +126,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     void loadData();
   }, []);
 
-  const createAppointment = useCallback((appointmentData: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const createAppointment = useCallback(async (appointmentData: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>) => {
     const now = new Date().toISOString();
     const newAppointment: Appointment = {
       ...appointmentData,
@@ -140,12 +140,46 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
     setState(prev => ({ ...prev, appointments: [...prev.appointments, newAppointment] }));
 
-    void apiRequest('/api/state', {
-      method: 'POST',
-      body: JSON.stringify({ resource: 'appointments', action: 'create', appointment: newAppointment }),
-    });
+    try {
+      const response = await apiRequest('/api/state', {
+        method: 'POST',
+        body: JSON.stringify({ resource: 'appointments', action: 'create', appointment: newAppointment }),
+      });
 
-    return newAppointment;
+      // If server returned an authoritative appointment, replace local placeholder
+      if (response?.appointment) {
+        setState(prev => ({
+          ...prev,
+          appointments: prev.appointments.map(a => a.id === newAppointment.id ? response.appointment : a),
+        }));
+      }
+
+      // Merge any server-generated notifications
+      if (response?.notifications && response.notifications.length) {
+        setState(prev => ({ ...prev, notifications: [...response.notifications, ...prev.notifications] }));
+      }
+
+      // Merge any server-generated messages and conversations
+      if (response?.messages && response.messages.length) {
+        setState(prev => {
+          const newMessages = [...prev.messages, ...response.messages.map((m: any) => normalizeMessage(m))];
+          // Update conversations that correspond to the messages
+          const updatedConversations = prev.conversations.map(conv => {
+            const lastMsg = response.messages.filter((m: any) => m.conversationId === conv.id).slice(-1)[0];
+            if (lastMsg) {
+              return { ...conv, lastMessage: normalizeMessage(lastMsg), unreadCount: (conv.unreadCount || 0) + 1 };
+            }
+            return conv;
+          });
+          return { ...prev, messages: newMessages, conversations: updatedConversations };
+        });
+      }
+
+      return response?.appointment ?? newAppointment;
+    } catch (err) {
+      console.error('Error creating appointment on server:', err);
+      return newAppointment;
+    }
   }, []);
 
   const updateAppointment = useCallback((id: string, updates: Partial<Appointment>) => {
@@ -207,7 +241,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const markNotificationAsRead = useCallback((id: string) => {
     setState(prev => ({
       ...prev,
-      notifications: prev.notifications.map(notification => notification.id === id ? { ...notification, isRead: true } : notification),
+      notifications: prev.notifications.map(notification => notification.id === id ? { ...notification, isRead: true, read: true } : notification),
     }));
 
     void apiRequest('/api/state', {
@@ -219,7 +253,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const markAllNotificationsAsRead = useCallback((userId: string) => {
     setState(prev => ({
       ...prev,
-      notifications: prev.notifications.map(notification => notification.userId === userId ? { ...notification, isRead: true } : notification),
+      notifications: prev.notifications.map(notification => notification.userId === userId ? { ...notification, isRead: true, read: true } : notification),
     }));
 
     void apiRequest('/api/state', {
@@ -243,7 +277,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const getUnreadCount = useCallback((userId: string) => state.notifications.filter(notification => notification.userId === userId && !notification.isRead).length, [state.notifications]);
+  const getUnreadCount = useCallback((userId: string) => state.notifications.filter(notification => notification.userId === userId && !notification.isRead && !notification.read).length, [state.notifications]);
 
   const addMessage = useCallback((message: Message) => {
     const normalizedMessage = normalizeMessage(message);
@@ -320,10 +354,19 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     void apiRequest('/api/state', {
       method: 'POST',
       body: JSON.stringify({ resource: 'conversations', action: 'create', conversation: newConversation }),
+    }).then((response: any) => {
+      if (response?.conversation) {
+        const serverConv = normalizeConversation(response.conversation as any);
+        setState(prev => ({ ...prev, conversations: prev.conversations.map(c => c.id === newConversation.id ? serverConv : c) }));
+        return serverConv;
+      }
+    }).catch(err => {
+      console.error('Error creating conversation on server:', err);
     });
 
     return newConversation;
   }, [state.conversations]);
+
 
   const addMedicalRecord = useCallback((record: Omit<MedicalRecord, 'id' | 'createdAt'>) => {
     const newRecord: MedicalRecord = {

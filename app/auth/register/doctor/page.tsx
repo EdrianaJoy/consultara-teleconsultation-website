@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { ArrowLeft, ArrowRight, User, Briefcase, Clock, MapPin } from 'lucide-react';
@@ -53,7 +53,7 @@ const defaultSchedule: WeeklySchedule = {
 
 export default function DoctorRegistrationPage() {
   const router = useRouter();
-  const { user, isLoading: authLoading, completeRegistration } = useAuth();
+  const { completeRegistration } = useAuth();
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -109,13 +109,6 @@ export default function DoctorRegistrationPage() {
   const updateFormData = (field: keyof DoctorProfile, value: unknown) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
-
-  useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-      router.replace('/auth/signup');
-    }
-  }, [user, authLoading, router]);
 
   const handleNext = () => {
     if (currentStep === 1) {

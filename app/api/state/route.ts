@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (resource === 'appointments' && action === 'create') {
-    return NextResponse.json({ appointment: consultaraDb.createAppointment(body.appointment) });
+    return NextResponse.json(consultaraDb.createAppointment(body.appointment));
   }
 
   if (resource === 'notifications' && action === 'add') {

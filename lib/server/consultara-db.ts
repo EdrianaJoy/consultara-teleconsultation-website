@@ -1113,7 +1113,7 @@ export const consultaraDb = {
     return rows.map(rowToDoctorProfile);
   },
 
-  createAppointment(input: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>): Appointment {
+  createAppointment(input: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>): { appointment: Appointment; notifications: Notification[]; messages: Message[] } {
     const database = getDb();
     const now = new Date().toISOString();
     const appointment: Appointment = {
@@ -1147,7 +1147,63 @@ export const consultaraDb = {
       appointment.updatedAt,
     );
 
-    return appointment;
+    // Create notifications for both patient and doctor about the new appointment
+    const patientProfile = getPatientProfileById(appointment.patientId);
+    const doctorProfile = getDoctorProfileById(appointment.doctorId);
+    const patientUserId = patientProfile?.userId || appointment.patientId;
+    const doctorUserId = doctorProfile?.userId || appointment.doctorId;
+    const doctorName = doctorProfile ? `Dr. ${doctorProfile.firstName} ${doctorProfile.lastName}` : 'your doctor';
+    const patientName = patientProfile ? `${patientProfile.firstName} ${patientProfile.lastName}` : 'the patient';
+    const appointmentDate = formatAppointmentDate(appointment.date);
+    const appointmentTime = appointment.timeSlot.startTime;
+
+    const bookingNotifications: Omit<Notification, 'id' | 'createdAt'>[] = [
+      {
+        userId: patientUserId,
+        type: 'appointment-created',
+        title: 'Appointment Booked',
+        message: `Your consultation with ${doctorName} is booked for ${appointmentDate} at ${appointmentTime}.`,
+        isRead: false,
+        actionUrl: '/patient/calendar',
+      },
+      {
+        userId: doctorUserId,
+        type: 'appointment-created',
+        title: 'New Appointment',
+        message: `You have a new consultation with ${patientName} scheduled for ${appointmentDate} at ${appointmentTime}.`,
+        isRead: false,
+        actionUrl: '/doctor/calendar',
+      },
+    ];
+
+    const persistedNotifications = bookingNotifications.map(n => consultaraDb.addNotification(n));
+
+    // Create or get conversation and an automated doctor message to the patient
+    const messages: Message[] = [];
+    try {
+      const conv = consultaraDb.getOrCreateConversation(appointment.patientId, appointment.doctorId);
+      const nowTs = new Date().toISOString();
+      const doctorGreeting: Message = {
+        id: `msg-${crypto.randomUUID()}`,
+        conversationId: conv.id,
+        senderId: appointment.doctorId,
+        senderRole: 'doctor',
+        senderType: 'doctor',
+        content: `Hello ${patientProfile?.firstName || ''}, thank you for booking a consultation with ${doctorName} on ${appointmentDate} at ${appointmentTime}. Please upload any relevant documents or let me know your main concerns so I can prepare before the appointment.`,
+        attachments: undefined,
+        isRead: false,
+        read: false,
+        createdAt: nowTs,
+        timestamp: nowTs,
+      };
+
+      const persistedMsg = consultaraDb.addMessage(doctorGreeting);
+      messages.push(persistedMsg);
+    } catch (err) {
+      // ignore messaging errors
+    }
+
+    return { appointment, notifications: persistedNotifications, messages };
   },
 
   updateAppointment(id: string, updates: Partial<Appointment>): AppointmentUpdateResult {

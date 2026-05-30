@@ -212,9 +212,9 @@ export default function DoctorProfilePage({
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // Create appointment
-    const appointment = createAppointment({
-      patientId: user.id,
+    // Create appointment (wait for server to persist and return messages/notifications)
+    const appointment = await createAppointment({
+      patientId: patientProfile?.id || user.id,
       doctorId: doctor.id,
       date: selectedDate,
       timeSlot: { startTime: selectedTime, endTime: selectedSlot.endTime, isAvailable: false },
@@ -223,8 +223,9 @@ export default function DoctorProfilePage({
       symptoms: reason || "General Consultation",
     });
 
-    addMedicalRecord({
-      patientId: user.id,
+    // Persist medical record linked to the authoritative appointment id
+    await addMedicalRecord({
+      patientId: patientProfile?.id || user.id,
       consultationId: appointment.id,
       doctorId: doctor.id,
       doctorName: fullName,
@@ -236,29 +237,6 @@ export default function DoctorProfilePage({
       treatment: "To be determined",
       notes: "Consultation scheduled. Records will be updated after the session.",
       followUpRequired: false,
-    });
-
-    const conversation = getOrCreateConversation(user.id, doctor.id);
-    addMessage({
-      id: `msg-${Date.now()}`,
-      conversationId: conversation.id,
-      senderId: doctor.id,
-      senderRole: "doctor",
-      senderType: "doctor",
-      content: `Hello${patientProfile?.firstName ? ` ${patientProfile.firstName}` : ""}! Your ${consultationType} consultation with ${fullName} is scheduled for ${new Date(selectedDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} at ${selectedTime}. Please upload any past prescriptions or lab results here so we can review them before your appointment.`,
-      isRead: false,
-      read: false,
-      createdAt: new Date().toISOString(),
-      timestamp: new Date().toISOString(),
-    });
-
-    // Add notification for the patient
-    addNotification({
-      userId: user.id,
-      type: "appointment-confirmed",
-      title: "Appointment Confirmed",
-      message: `Your ${consultationType} consultation with ${fullName} is confirmed for ${new Date(selectedDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} at ${selectedTime}. Payment method: ${paymentMethods.find(p => p.id === paymentMethod)?.name}.`,
-      isRead: false,
     });
 
     setIsBooking(false);
