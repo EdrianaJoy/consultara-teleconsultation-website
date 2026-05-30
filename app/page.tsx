@@ -15,6 +15,7 @@ import {
   Video, 
   Calendar, 
   MessageSquare,
+  Laptop,
   ArrowRight,
   Star,
   CheckCircle
@@ -185,9 +186,9 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[
               {
-                icon: Video,
-                title: 'Video Consultations',
-                description: 'Connect with doctors through secure, high-quality video calls from anywhere.'
+                icon: Laptop,
+                title: 'Video and Chat Consultations',
+                description: 'Connect with doctors through secure, high-quality video calls and chat from anywhere.'
               },
               {
                 icon: Clock,
@@ -413,7 +414,7 @@ export default function LandingPage() {
                 <span className="text-xl font-semibold">ConsulTara</span>
               </div>
               <p className="text-white/60 text-sm">
-                Making healthcare accessible to everyone, everywhere.
+                To make quality healthcare accessible to every Filipino, anytime and anywhere.
               </p>
             </div>
 

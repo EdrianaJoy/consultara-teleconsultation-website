@@ -24,6 +24,7 @@ import { useAppData } from "@/lib/app-data-context";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { WeeklySchedule } from "@/lib/types";
+import { DOCTOR_DEFAULT_SCHEDULE, normalizeWeeklySchedule } from "@/lib/doctor-schedule";
 
 /**
  * Time slot type
@@ -34,30 +35,17 @@ interface TimeSlot {
 }
 
 /**
- * Default schedule template
- */
-const defaultSchedule: WeeklySchedule = {
-  monday: { isWorkingDay: true, slots: [{ startTime: "09:00", endTime: "17:00", isAvailable: true }] },
-  tuesday: { isWorkingDay: true, slots: [{ startTime: "09:00", endTime: "17:00", isAvailable: true }] },
-  wednesday: { isWorkingDay: true, slots: [{ startTime: "09:00", endTime: "17:00", isAvailable: true }] },
-  thursday: { isWorkingDay: true, slots: [{ startTime: "09:00", endTime: "17:00", isAvailable: true }] },
-  friday: { isWorkingDay: true, slots: [{ startTime: "09:00", endTime: "17:00", isAvailable: true }] },
-  saturday: { isWorkingDay: false, slots: [] },
-  sunday: { isWorkingDay: false, slots: [] },
-};
-
-/**
  * Doctor Schedule Page Component
  */
 export default function DoctorSchedulePage() {
   const { user, doctorProfile, updateDoctorProfile } = useAuth();
   const { appointments, updateAppointmentStatus } = useAppData();
-  const [schedule, setSchedule] = useState<WeeklySchedule>(doctorProfile?.availability || defaultSchedule);
+  const [schedule, setSchedule] = useState<WeeklySchedule>(normalizeWeeklySchedule(doctorProfile?.availability || DOCTOR_DEFAULT_SCHEDULE));
   const [isSaving, setIsSaving] = useState(false);
   const [savedMessage, setSavedMessage] = useState(false);
 
   useEffect(() => {
-    setSchedule(doctorProfile?.availability || defaultSchedule);
+    setSchedule(normalizeWeeklySchedule(doctorProfile?.availability));
   }, [doctorProfile]);
 
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -268,7 +256,7 @@ export default function DoctorSchedulePage() {
                   className="p-4 bg-muted rounded-lg"
                 >
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                       {apt.type === "video" ? (
                         <Video className="w-5 h-5 text-primary" />
                       ) : (

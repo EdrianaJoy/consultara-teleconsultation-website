@@ -55,7 +55,7 @@ function getCalendarDays(year: number, month: number) {
  * Patient Calendar Page Component
  */
 export default function CalendarPage() {
-  const { user } = useAuth();
+  const { user, patientProfile } = useAuth();
   const { appointments, cancelAppointment } = useAppData();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -82,8 +82,8 @@ export default function CalendarPage() {
   const month = currentDate.getMonth();
   const calendarDays = getCalendarDays(year, month);
 
-  // Get patient appointments
-  const rawPatientAppointments = appointments.filter(a => a.patientId === user?.id);
+  // Get patient appointments (match patient profile id when available)
+  const rawPatientAppointments = appointments.filter(a => a.patientId === (patientProfile?.id || user?.id));
 
   // Deduplicate appointments so that when an appointment is rescheduled
   // the prior scheduled appointment is not shown. We group by doctor +

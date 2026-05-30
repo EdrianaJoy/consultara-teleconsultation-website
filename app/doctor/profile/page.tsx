@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import type { WeeklySchedule } from "@/lib/types";
+import { DOCTOR_DEFAULT_SCHEDULE, DOCTOR_SCHEDULE_DAYS, normalizeWeeklySchedule } from "@/lib/doctor-schedule";
 
 /**
  * Doctor Profile Page Component
@@ -39,16 +40,6 @@ export default function DoctorProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [savedMessage, setSavedMessage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const defaultSchedule: WeeklySchedule = {
-    monday: { isWorkingDay: true, slots: [{ startTime: "09:00", endTime: "17:00", isAvailable: true }] },
-    tuesday: { isWorkingDay: true, slots: [{ startTime: "09:00", endTime: "17:00", isAvailable: true }] },
-    wednesday: { isWorkingDay: true, slots: [{ startTime: "09:00", endTime: "17:00", isAvailable: true }] },
-    thursday: { isWorkingDay: true, slots: [{ startTime: "09:00", endTime: "17:00", isAvailable: true }] },
-    friday: { isWorkingDay: true, slots: [{ startTime: "09:00", endTime: "17:00", isAvailable: true }] },
-    saturday: { isWorkingDay: false, slots: [] },
-    sunday: { isWorkingDay: false, slots: [] },
-  };
 
   // Form state - initialize from doctorProfile
   const [formData, setFormData] = useState({
@@ -67,7 +58,7 @@ export default function DoctorProfilePage() {
     location: "Metro Manila",
     acceptsInsurance: true,
   });
-  const [availability, setAvailability] = useState<WeeklySchedule>(defaultSchedule);
+  const [availability, setAvailability] = useState<WeeklySchedule>(DOCTOR_DEFAULT_SCHEDULE);
 
   // Load profile data on mount and when doctorProfile changes
   useEffect(() => {
@@ -88,11 +79,11 @@ export default function DoctorProfilePage() {
         location: doctorProfile.location || "Metro Manila",
         acceptsInsurance: doctorProfile.acceptsInsurance ?? true,
       });
-      setAvailability(doctorProfile.availability || defaultSchedule);
+      setAvailability(normalizeWeeklySchedule(doctorProfile.availability));
     }
   }, [doctorProfile, user]);
 
-  const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
+  const days = DOCTOR_SCHEDULE_DAYS;
 
   const toggleWorkingDay = (day: typeof days[number]) => {
     setAvailability(prev => ({
@@ -251,7 +242,7 @@ export default function DoctorProfilePage() {
         <Button 
           onClick={handleSubmit} 
           disabled={isSaving}
-          className="min-w-[120px]"
+          className="min-w-30"
         >
           {isSaving ? (
             "Saving..."
@@ -432,18 +423,18 @@ export default function DoctorProfilePage() {
               <div key={day} className="rounded-lg border border-border p-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <label className="flex items-center gap-3 text-sm font-medium text-foreground capitalize">
-                    <input
-                      type="checkbox"
-                      checked={availability[day].isWorkingDay}
-                      onChange={() => toggleWorkingDay(day)}
-                      className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
-                    />
+                      <input
+                        type="checkbox"
+                        checked={!!availability[day]?.isWorkingDay}
+                        onChange={() => toggleWorkingDay(day)}
+                        className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                      />
                     {day}
                   </label>
 
-                  {availability[day].isWorkingDay ? (
+                  {availability[day]?.isWorkingDay ? (
                     <div className="flex flex-wrap items-center gap-2">
-                      {availability[day].slots.map((slot, index) => (
+                      {(availability[day]?.slots || []).map((slot, index) => (
                         <div key={index} className="flex items-center gap-2">
                           <Input
                             type="time"

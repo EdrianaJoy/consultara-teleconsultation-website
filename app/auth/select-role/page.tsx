@@ -49,30 +49,23 @@ export default function SelectRolePage({ allowUnauthenticated = true }: SelectRo
   }, [allowUnauthenticated, user, router, patientProfile, doctorProfile]);
 
   const handleRoleSelect = async (role: 'patient' | 'doctor') => {
-    // If the user is signed in, update server-side role first so session state is consistent.
-    if (user) {
-      try {
-        await selectRole(role);
-      } catch (err) {
-        // swallow errors — still navigate to signup so user can complete profile if needed
-        console.error('selectRole failed', err);
-      }
-    }
+    // Compute target route immediately and navigate first so the UI responds
+    // quickly even if server calls take time. Fire-and-forget the selectRole
+    // update for signed-in users to keep session in sync.
+    const target = user
+      ? role === 'patient'
+        ? '/auth/register/patient'
+        : '/auth/register/doctor'
+      : role === 'patient'
+      ? '/auth/signup?role=patient'
+      : '/auth/signup?role=doctor';
 
-    // Redirect: signed-in users go to the role-specific register page;
-    // unauthenticated users go to the signup flow with role prefilled.
+    // Navigate immediately
+    router.push(target);
+
+    // If signed in, update role on the server asynchronously (don't block navigation)
     if (user) {
-      if (role === 'patient') {
-        router.push('/auth/register/patient');
-      } else {
-        router.push('/auth/register/doctor');
-      }
-    } else {
-      if (role === 'patient') {
-        router.push('/auth/signup?role=patient');
-      } else {
-        router.push('/auth/signup?role=doctor');
-      }
+      selectRole(role).catch((err) => console.error('selectRole failed', err));
     }
   };
 

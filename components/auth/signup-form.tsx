@@ -4,16 +4,17 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Eye, EyeOff, ArrowLeft, ArrowRight, User, Stethoscope, MapPin, Heart, Scale, Phone, Ruler } from 'lucide-react';
+import { Eye, EyeOff, ArrowLeft, ArrowRight, User, Stethoscope, MapPin, Heart, Scale, Phone, Ruler, Briefcase, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/lib/auth-context';
 import { toast } from 'sonner';
 
-type Step = 'role' | 'credentials' | 'profile-1' | 'profile-2' | 'profile-3' | 'profile-4' | 'profile';
+type Step = 'role' | 'credentials' | 'profile-1' | 'profile-2' | 'profile-3' | 'profile-4' | 'doctor-profile-1' | 'doctor-profile-2' | 'doctor-profile-3' | 'profile';
 type Role = 'patient' | 'doctor';
 
 export type SignUpFormProps = {
@@ -58,6 +59,26 @@ export default function SignUpForm({ initialRole }: SignUpFormProps) {
   const [yearsOfExperience, setYearsOfExperience] = useState('');
   const [consultationFee, setConsultationFee] = useState('');
   const [education, setEducation] = useState('');
+  const [doctorLocation, setDoctorLocation] = useState('Makati City');
+  const [doctorLanguagesText, setDoctorLanguagesText] = useState('English, Filipino');
+  const [doctorWorkingDays, setDoctorWorkingDays] = useState({
+    monday: true,
+    tuesday: true,
+    wednesday: true,
+    thursday: true,
+    friday: true,
+    saturday: false,
+    sunday: false,
+  });
+  const [doctorTimeSlots, setDoctorTimeSlots] = useState({
+    monday: { start: '09:00', end: '17:00' },
+    tuesday: { start: '09:00', end: '17:00' },
+    wednesday: { start: '09:00', end: '17:00' },
+    thursday: { start: '09:00', end: '17:00' },
+    friday: { start: '09:00', end: '17:00' },
+    saturday: { start: '09:00', end: '13:00' },
+    sunday: { start: '09:00', end: '13:00' },
+  });
 
   const roleLabel = role === 'doctor' ? 'Doctor' : 'Patient';
 
@@ -65,6 +86,7 @@ export default function SignUpForm({ initialRole }: SignUpFormProps) {
   const validatePhone = (value: string) => /^(\+63|0)9\d{9}$/.test(value.replace(/\s/g, ''));
   const validateName = (value: string) => /^[A-Za-z\s\-']+$/.test(value) && value.length >= 2;
   const isPatientSignup = initialRole === 'patient';
+  const isDoctorSignup = initialRole === 'doctor' || role === 'doctor';
   const patientWizardSteps = [
     { key: 'credentials', title: 'Account Details', icon: ArrowRight },
     { key: 'profile-1', title: 'Personal Info', icon: User },
@@ -73,6 +95,12 @@ export default function SignUpForm({ initialRole }: SignUpFormProps) {
     { key: 'profile-4', title: 'Medical History', icon: Heart },
   ] as const;
   const patientStepIndex = patientWizardSteps.findIndex((wizardStep) => wizardStep.key === step);
+  const doctorWizardSteps = [
+    { key: 'doctor-profile-1', title: 'Personal Information', icon: User },
+    { key: 'doctor-profile-2', title: 'Professional Details', icon: Briefcase },
+    { key: 'doctor-profile-3', title: 'Availability', icon: Clock },
+  ] as const;
+  const doctorStepIndex = doctorWizardSteps.findIndex((wizardStep) => wizardStep.key === step);
 
   const buildPatientProfileData = () => ({
     firstName,
@@ -251,7 +279,7 @@ export default function SignUpForm({ initialRole }: SignUpFormProps) {
     }
 
     if (role === 'doctor' || initialRole === 'doctor') {
-      setStep('profile');
+      setStep('doctor-profile-1');
       return;
     }
 
@@ -362,6 +390,128 @@ export default function SignUpForm({ initialRole }: SignUpFormProps) {
       }
       toast.success('Account created successfully!');
       router.push(role === 'patient' ? '/patient/dashboard' : '/doctor/dashboard');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Registration failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDoctorNext = () => {
+    if (step === 'doctor-profile-1') {
+      if (!validateName(firstName) || !validateName(lastName)) {
+        toast.error('Please enter a valid first and last name');
+        return;
+      }
+
+      if (!validatePhone(phone)) {
+        toast.error('Please enter a valid Philippine mobile number');
+        return;
+      }
+
+      if (!dateOfBirth) {
+        toast.error('Please enter your date of birth');
+        return;
+      }
+
+      if (!gender) {
+        toast.error('Please select your gender');
+        return;
+      }
+
+      setStep('doctor-profile-2');
+      return;
+    }
+
+    if (step === 'doctor-profile-2') {
+      const license = licenseNumber.trim().toUpperCase();
+
+      if (!specialization) {
+        toast.error('Please select your specialization');
+        return;
+      }
+
+      if (!/^PRC-\d{6,7}$/.test(license)) {
+        toast.error('PRC license number must be in the format PRC-0123456');
+        return;
+      }
+
+      if (!yearsOfExperience || Number(yearsOfExperience) < 0) {
+        toast.error('Please enter valid years of experience');
+        return;
+      }
+
+      if (!education.trim()) {
+        toast.error('Please enter your education and certifications');
+        return;
+      }
+
+      if (!doctorLocation) {
+        toast.error('Please select your practice location');
+        return;
+      }
+
+      setLicenseNumber(license);
+      setStep('doctor-profile-3');
+    }
+  };
+
+  const handleDoctorBack = () => {
+    if (step === 'doctor-profile-2') {
+      setStep('doctor-profile-1');
+      return;
+    }
+
+    if (step === 'doctor-profile-3') {
+      setStep('doctor-profile-2');
+      return;
+    }
+
+    if (step === 'credentials') {
+      router.push('/auth/select-role');
+    }
+  };
+
+  const handleDoctorSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const availability = {
+        monday: doctorWorkingDays.monday ? [{ startTime: doctorTimeSlots.monday.start, endTime: doctorTimeSlots.monday.end, isAvailable: true }] : [],
+        tuesday: doctorWorkingDays.tuesday ? [{ startTime: doctorTimeSlots.tuesday.start, endTime: doctorTimeSlots.tuesday.end, isAvailable: true }] : [],
+        wednesday: doctorWorkingDays.wednesday ? [{ startTime: doctorTimeSlots.wednesday.start, endTime: doctorTimeSlots.wednesday.end, isAvailable: true }] : [],
+        thursday: doctorWorkingDays.thursday ? [{ startTime: doctorTimeSlots.thursday.start, endTime: doctorTimeSlots.thursday.end, isAvailable: true }] : [],
+        friday: doctorWorkingDays.friday ? [{ startTime: doctorTimeSlots.friday.start, endTime: doctorTimeSlots.friday.end, isAvailable: true }] : [],
+        saturday: doctorWorkingDays.saturday ? [{ startTime: doctorTimeSlots.saturday.start, endTime: doctorTimeSlots.saturday.end, isAvailable: true }] : [],
+        sunday: doctorWorkingDays.sunday ? [{ startTime: doctorTimeSlots.sunday.start, endTime: doctorTimeSlots.sunday.end, isAvailable: true }] : [],
+      };
+
+      const profileData = {
+        firstName,
+        lastName,
+        phone,
+        dateOfBirth,
+        gender: gender as 'male' | 'female' | 'other' | 'prefer-not-to-say',
+        specialization,
+        licenseNumber: licenseNumber.trim().toUpperCase(),
+        yearsOfExperience: Number(yearsOfExperience),
+        consultationFee: Number(consultationFee || 0),
+        education,
+        location: doctorLocation,
+        languages: doctorLanguagesText.split(',').map((value) => value.trim()).filter(Boolean),
+        acceptsInsurance: true,
+        availability,
+      };
+
+      const result = await register(email, password, 'doctor', profileData as any);
+      if (!result.success) {
+        toast.error(result.error || 'Registration failed');
+        return;
+      }
+
+      toast.success('Account created successfully!');
+      router.push('/doctor/dashboard');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Registration failed');
     } finally {
@@ -684,7 +834,25 @@ export default function SignUpForm({ initialRole }: SignUpFormProps) {
 
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword" className="text-foreground">Confirm Password</Label>
-                  <Input id="confirmPassword" type="password" placeholder="Confirm your password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="h-11 border-mist focus:border-sage" required />
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Confirm your password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="h-11 border-mist focus:border-sage pr-12"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground/50 hover:text-foreground"
+                      aria-label={showPassword ? 'Hide confirm password' : 'Show confirm password'}
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -790,7 +958,25 @@ export default function SignUpForm({ initialRole }: SignUpFormProps) {
 
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword" className="text-[#2D3B35] text-sm">Confirm Password</Label>
-                  <Input id="confirmPassword" type="password" placeholder="Confirm your password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className={inputClass} required />
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Confirm your password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className={`${inputClass} pr-12`}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-[#2D3B35]/50 hover:text-[#2D3B35]"
+                      aria-label={showPassword ? 'Hide confirm password' : 'Show confirm password'}
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -806,7 +992,248 @@ export default function SignUpForm({ initialRole }: SignUpFormProps) {
             </form>
           )}
 
-          {step === 'profile' && (
+          {step === 'doctor-profile-1' && isDoctorSignup && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-center gap-3 mb-8">
+                {doctorWizardSteps.map((wizardStep, index) => {
+                  const isActive = doctorStepIndex >= index;
+                  const StepIcon = wizardStep.icon;
+
+                  return (
+                    <div key={wizardStep.key} className="flex items-center">
+                      <div className={`flex items-center gap-2 ${isActive ? 'text-sage' : 'text-mist'}`}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors ${isActive ? 'bg-sage border-sage text-white' : 'border-mist text-mist'}`}>
+                          <StepIcon className="w-5 h-5" />
+                        </div>
+                        <span className="hidden sm:block text-sm font-medium">{wizardStep.title}</span>
+                      </div>
+                      {index < doctorWizardSteps.length - 1 && (
+                        <div className={`w-8 sm:w-12 h-0.5 mx-2 ${doctorStepIndex > index ? 'bg-sage' : 'bg-mist'}`} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="text-center">
+                <h2 className="text-2xl font-bold text-[#2D3B35] mb-2">Personal Information</h2>
+                <p className="text-[#2D3B35]/70">Tell us about yourself</p>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="doctorFirstName" className="text-[#2D3B35] text-sm">First Name *</Label>
+                  <Input id="doctorFirstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Enter your first name" className={inputClass} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="doctorLastName" className="text-[#2D3B35] text-sm">Last Name *</Label>
+                  <Input id="doctorLastName" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Enter your last name" className={inputClass} required />
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="doctorPhone" className="text-[#2D3B35] text-sm">Phone Number *</Label>
+                  <Input id="doctorPhone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+63 9XX XXX XXXX" className={inputClass} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="doctorDob" className="text-[#2D3B35] text-sm">Date of Birth *</Label>
+                  <Input id="doctorDob" type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className={inputClass} required />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="doctorGender" className="text-[#2D3B35] text-sm">Gender</Label>
+                <select id="doctorGender" value={gender} onChange={(e) => setGender(e.target.value)} className={`w-full ${inputClass} px-3`} required>
+                  <option value="">Select</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                  <option value="prefer-not-to-say">Prefer not to say</option>
+                </select>
+              </div>
+
+              <div className="flex justify-between pt-2">
+                <Button type="button" variant="outline" onClick={() => router.push('/auth/select-role')} className="border-[#C0C3B9]">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Change Role
+                </Button>
+                <Button type="button" onClick={handleDoctorNext} className="bg-[#769382] hover:bg-[#769382]/90 text-white">
+                  Next
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {step === 'doctor-profile-2' && isDoctorSignup && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-center gap-3 mb-8">
+                {doctorWizardSteps.map((wizardStep, index) => {
+                  const isActive = doctorStepIndex >= index;
+                  const StepIcon = wizardStep.icon;
+
+                  return (
+                    <div key={wizardStep.key} className="flex items-center">
+                      <div className={`flex items-center gap-2 ${isActive ? 'text-sage' : 'text-mist'}`}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors ${isActive ? 'bg-sage border-sage text-white' : 'border-mist text-mist'}`}>
+                          <StepIcon className="w-5 h-5" />
+                        </div>
+                        <span className="hidden sm:block text-sm font-medium">{wizardStep.title}</span>
+                      </div>
+                      {index < doctorWizardSteps.length - 1 && (
+                        <div className={`w-8 sm:w-12 h-0.5 mx-2 ${doctorStepIndex > index ? 'bg-sage' : 'bg-mist'}`} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="text-center">
+                <h2 className="text-2xl font-bold text-[#2D3B35] mb-2">Professional Details</h2>
+                <p className="text-[#2D3B35]/70">Tell us about your medical practice</p>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="specialization" className="text-[#2D3B35] text-sm">Specialization *</Label>
+                  <select id="specialization" value={specialization} onChange={(e) => setSpecialization(e.target.value)} className={`w-full ${inputClass} px-3`} required>
+                    <option value="">Select Specialization</option>
+                    {departments.map((dept) => <option key={dept} value={dept}>{dept}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="licenseNumber" className="text-[#2D3B35] text-sm">PRC License Number *</Label>
+                  <Input id="licenseNumber" placeholder="PRC-0095631" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} className={inputClass} required />
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="yearsOfExperience" className="text-[#2D3B35] text-sm">Years of Experience *</Label>
+                  <Input id="yearsOfExperience" type="number" min="0" placeholder="0" value={yearsOfExperience} onChange={(e) => setYearsOfExperience(e.target.value)} className={inputClass} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="consultationFee" className="text-[#2D3B35] text-sm">Consultation Fee (PHP)</Label>
+                  <Input id="consultationFee" type="number" min="0" placeholder="500" value={consultationFee} onChange={(e) => setConsultationFee(e.target.value)} className={inputClass} />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="education" className="text-[#2D3B35] text-sm">Education & Certifications *</Label>
+                <Textarea id="education" value={education} onChange={(e) => setEducation(e.target.value)} placeholder="MD from UP Manila, Fellowship at Philippine Heart Center" className={`${textareaClass} min-h-24`} />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="doctorLanguages" className="text-[#2D3B35] text-sm">Languages Spoken</Label>
+                <Input id="doctorLanguages" value={doctorLanguagesText} onChange={(e) => setDoctorLanguagesText(e.target.value)} placeholder="English, Filipino" className={inputClass} />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="doctorLocation" className="text-[#2D3B35] text-sm">Practice Location *</Label>
+                <Select value={doctorLocation} onValueChange={setDoctorLocation}>
+                  <SelectTrigger className="h-11 border-mist focus:border-sage">
+                    <SelectValue placeholder="Select your location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {metroManilaCities.map((city) => <SelectItem key={city} value={city}>{city}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex justify-between pt-2">
+                <Button type="button" variant="outline" onClick={handleDoctorBack} className="border-[#C0C3B9]">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back
+                </Button>
+                <Button type="button" onClick={handleDoctorNext} className="bg-[#769382] hover:bg-[#769382]/90 text-white">
+                  Next
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {step === 'doctor-profile-3' && isDoctorSignup && (
+            <form onSubmit={handleDoctorSubmit} className="space-y-6">
+              <div className="flex items-center justify-center gap-3 mb-8">
+                {doctorWizardSteps.map((wizardStep, index) => {
+                  const isActive = doctorStepIndex >= index;
+                  const StepIcon = wizardStep.icon;
+
+                  return (
+                    <div key={wizardStep.key} className="flex items-center">
+                      <div className={`flex items-center gap-2 ${isActive ? 'text-sage' : 'text-mist'}`}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors ${isActive ? 'bg-sage border-sage text-white' : 'border-mist text-mist'}`}>
+                          <StepIcon className="w-5 h-5" />
+                        </div>
+                        <span className="hidden sm:block text-sm font-medium">{wizardStep.title}</span>
+                      </div>
+                      {index < doctorWizardSteps.length - 1 && (
+                        <div className={`w-8 sm:w-12 h-0.5 mx-2 ${doctorStepIndex > index ? 'bg-sage' : 'bg-mist'}`} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="text-center">
+                <h2 className="text-2xl font-bold text-[#2D3B35] mb-2">Availability</h2>
+                <p className="text-[#2D3B35]/70">Set your available days and time slots</p>
+              </div>
+
+              <div className="space-y-3">
+                {(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const).map((day) => (
+                  <div key={day} className={`p-4 rounded-lg border-2 transition-colors ${doctorWorkingDays[day] ? 'border-sage bg-sage/10' : 'border-mist bg-white'}`}>
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          checked={doctorWorkingDays[day]}
+                          onCheckedChange={(checked) => setDoctorWorkingDays((prev) => ({ ...prev, [day]: checked as boolean }))}
+                          className="data-[state=checked]:bg-sage data-[state=checked]:border-sage"
+                        />
+                        <span className="text-sm font-medium text-foreground capitalize">{day}</span>
+                      </div>
+
+                      {doctorWorkingDays[day] && (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="time"
+                            value={doctorTimeSlots[day].start}
+                            onChange={(e) => setDoctorTimeSlots((prev) => ({ ...prev, [day]: { ...prev[day], start: e.target.value } }))}
+                            className="w-28 h-9 text-sm border-mist"
+                          />
+                          <span className="text-foreground/60">to</span>
+                          <Input
+                            type="time"
+                            value={doctorTimeSlots[day].end}
+                            onChange={(e) => setDoctorTimeSlots((prev) => ({ ...prev, [day]: { ...prev[day], end: e.target.value } }))}
+                            className="w-28 h-9 text-sm border-mist"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="bg-cream/30 rounded-lg p-4">
+                <p className="text-sm text-foreground/70">Patients will see these hours when booking appointments. You can update them later in your dashboard.</p>
+              </div>
+
+              <div className="flex justify-between pt-2">
+                <Button type="button" variant="outline" onClick={handleDoctorBack} className="border-[#C0C3B9]">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back
+                </Button>
+                <Button type="submit" disabled={isLoading} className="bg-[#769382] hover:bg-[#769382]/90 text-white">
+                  {isLoading ? 'Creating Account...' : 'Complete Registration'}
+                </Button>
+              </div>
+            </form>
+          )}
+
+          {step === 'profile' && !isDoctorSignup && (
             <form onSubmit={handleProfileSubmit} className="space-y-6">
               <div className="text-center">
                 <h2 className="text-2xl font-bold text-[#2D3B35] mb-2">{roleLabel} Profile Details</h2>

@@ -21,8 +21,9 @@ import { useAuth } from '@/lib/auth-context';
 import { toast } from 'sonner';
 import type { DoctorProfile, Department, WeeklySchedule } from '@/lib/types';
 import { departments } from '@/lib/data';
+import { DOCTOR_DEFAULT_SCHEDULE, DOCTOR_SCHEDULE_DAYS, buildWeeklyScheduleFromWorkingHours } from '@/lib/doctor-schedule';
 
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2 | 3;
 
 const metroManilaLocations = [
   'Makati City',
@@ -40,16 +41,6 @@ const metroManilaLocations = [
   'Caloocan City',
   'Valenzuela City',
 ];
-
-const defaultSchedule: WeeklySchedule = {
-  monday: { isWorkingDay: true, slots: [{ startTime: '09:00', endTime: '17:00', isAvailable: true }] },
-  tuesday: { isWorkingDay: true, slots: [{ startTime: '09:00', endTime: '17:00', isAvailable: true }] },
-  wednesday: { isWorkingDay: true, slots: [{ startTime: '09:00', endTime: '17:00', isAvailable: true }] },
-  thursday: { isWorkingDay: true, slots: [{ startTime: '09:00', endTime: '17:00', isAvailable: true }] },
-  friday: { isWorkingDay: true, slots: [{ startTime: '09:00', endTime: '17:00', isAvailable: true }] },
-  saturday: { isWorkingDay: false, slots: [] },
-  sunday: { isWorkingDay: false, slots: [] },
-};
 
 export default function DoctorRegistrationPage() {
   const router = useRouter();
@@ -73,10 +64,10 @@ export default function DoctorRegistrationPage() {
     bio: '',
     consultationFee: 500,
     languages: ['English', 'Filipino'],
-    availability: defaultSchedule,
+    availability: DOCTOR_DEFAULT_SCHEDULE,
     isAvailable: true,
     location: 'Makati City',
-    acceptsInsurance: true,
+    acceptsInsurance: false,
   });
 
   const [languagesText, setLanguagesText] = useState('English, Filipino');
@@ -137,7 +128,7 @@ export default function DoctorRegistrationPage() {
         return;
       }
     } else if (currentStep === 2) {
-      if (!formData.licenseNumber || !formData.specialization || !formData.education) {
+      if (!formData.licenseNumber || !formData.specialization || !formData.education || !formData.location) {
         toast.error('Please fill in all required fields');
         return;
       }
@@ -149,11 +140,6 @@ export default function DoctorRegistrationPage() {
         return;
       }
       updateFormData('licenseNumber', license);
-    } else if (currentStep === 3) {
-      if (!formData.location) {
-        toast.error('Please select your location');
-        return;
-      }
     }
     setCurrentStep((prev) => (prev + 1) as Step);
   };
@@ -167,36 +153,7 @@ export default function DoctorRegistrationPage() {
 
     try {
       // Build availability schedule based on working days and time slots
-      const availability: WeeklySchedule = {
-        monday: { 
-          isWorkingDay: workingDays.monday, 
-          slots: workingDays.monday ? [{ startTime: timeSlots.monday.start, endTime: timeSlots.monday.end, isAvailable: true }] : [] 
-        },
-        tuesday: { 
-          isWorkingDay: workingDays.tuesday, 
-          slots: workingDays.tuesday ? [{ startTime: timeSlots.tuesday.start, endTime: timeSlots.tuesday.end, isAvailable: true }] : [] 
-        },
-        wednesday: { 
-          isWorkingDay: workingDays.wednesday, 
-          slots: workingDays.wednesday ? [{ startTime: timeSlots.wednesday.start, endTime: timeSlots.wednesday.end, isAvailable: true }] : [] 
-        },
-        thursday: { 
-          isWorkingDay: workingDays.thursday, 
-          slots: workingDays.thursday ? [{ startTime: timeSlots.thursday.start, endTime: timeSlots.thursday.end, isAvailable: true }] : [] 
-        },
-        friday: { 
-          isWorkingDay: workingDays.friday, 
-          slots: workingDays.friday ? [{ startTime: timeSlots.friday.start, endTime: timeSlots.friday.end, isAvailable: true }] : [] 
-        },
-        saturday: { 
-          isWorkingDay: workingDays.saturday, 
-          slots: workingDays.saturday ? [{ startTime: timeSlots.saturday.start, endTime: timeSlots.saturday.end, isAvailable: true }] : [] 
-        },
-        sunday: { 
-          isWorkingDay: workingDays.sunday, 
-          slots: workingDays.sunday ? [{ startTime: timeSlots.sunday.start, endTime: timeSlots.sunday.end, isAvailable: true }] : [] 
-        },
-      };
+      const availability: WeeklySchedule = buildWeeklyScheduleFromWorkingHours(workingDays, timeSlots);
 
       const profileData: Partial<DoctorProfile> = {
         ...formData,
@@ -219,9 +176,8 @@ export default function DoctorRegistrationPage() {
 
   const steps = [
     { number: 1, title: 'Personal Info', icon: User },
-    { number: 2, title: 'Professional', icon: Briefcase },
-    { number: 3, title: 'Location', icon: MapPin },
-    { number: 4, title: 'Availability', icon: Clock },
+    { number: 2, title: 'Professional Details', icon: Briefcase },
+    { number: 3, title: 'Availability', icon: Clock },
   ];
 
   const progressPercent = ((currentStep - 1) / (steps.length - 1)) * 100;
@@ -243,38 +199,40 @@ export default function DoctorRegistrationPage() {
         </div>
 
         {/* Progress Steps */}
-        <div className="w-full max-w-2xl mx-auto mb-8">
-          <div className="relative flex items-center justify-center gap-6">
-            {/* Left active chip */}
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[#6b8f79] text-white">
-                <User className="w-5 h-5" />
-              </div>
-              <div className="text-sm text-[#6b8f79] font-medium">Personal Info</div>
-            </div>
+        <div className="w-full max-w-3xl mx-auto mb-10">
+          <div className="flex items-center justify-between gap-3 sm:gap-4 overflow-x-auto pb-2">
+            {steps.map((step, index) => {
+              const isCurrent = currentStep === step.number;
+              const isCompleted = currentStep > step.number;
+              const StepIcon = step.icon;
 
-            {/* Progress connectors and remaining steps */}
-            <div className="flex-1 max-w-2xl">
-              <div className="relative">
-                <div className="h-1 rounded-full bg-[#e6e6e6]" />
-                <div className="absolute left-0 top-0 h-1 rounded-full bg-[#6b8f79]" style={{ width: `${progressPercent}%` }} />
-                <div className="flex items-center justify-between mt-3">
-                  {steps.map((step, i) => (
-                    <div key={step.number} className="flex flex-col items-center">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center border ${currentStep > step.number ? 'bg-[#6b8f79] border-[#6b8f79] text-white' : 'border-[#e6e6e6] text-[#9aa69a]'}`}>
-                        <step.icon className="w-4 h-4" />
-                      </div>
-                      <span className="mt-2 text-xs text-[#2D3B35]/60">{step.title}</span>
+              return (
+                <div key={step.number} className="flex items-center flex-1 min-w-30">
+                  <div className={`flex items-center gap-3 ${isCurrent || isCompleted ? 'text-[#6b8f79]' : 'text-[#9aa69a]'}`}>
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-colors ${isCurrent || isCompleted ? 'bg-[#6b8f79] border-[#6b8f79] text-white' : 'border-[#d9d4c8] text-[#b7b0a3]'}`}>
+                      <StepIcon className="w-5 h-5" />
                     </div>
-                  ))}
+                    <div className={`text-sm font-medium ${isCurrent || isCompleted ? 'text-[#6b8f79]' : 'text-[#c0b9ab]'}`}>
+                      {step.title}
+                    </div>
+                  </div>
+
+                  {index < steps.length - 1 && (
+                    <div className="flex-1 mx-4 h-px bg-[#d9d4c8]">
+                      <div
+                        className="h-px bg-[#6b8f79]"
+                        style={{ width: currentStep > step.number ? '100%' : '0%' }}
+                      />
+                    </div>
+                  )}
                 </div>
-              </div>
-            </div>
+              );
+            })}
           </div>
         </div>
 
         {/* Form Card */}
-        <div className="bg-white rounded-3xl shadow-lg p-8 sm:p-12 border border-[#f0ede9] max-w-3xl mx-auto">
+        <div className="bg-white rounded-[28px] shadow-lg p-8 sm:p-10 border border-[#f0ede9] max-w-180 mx-auto">
           {/* Step 1: Personal Information */}
           {currentStep === 1 && (
             <div className="space-y-6">
@@ -283,61 +241,84 @@ export default function DoctorRegistrationPage() {
                 <p className="text-sm text-[#2D3B35]/60">Tell us about yourself</p>
               </div>
 
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName" className="text-[#2D3B35]">First Name *</Label>
-                  <Input
-                    id="firstName"
-                    value={formData.firstName}
-                    onChange={(e) => updateFormData('firstName', e.target.value)}
-                    placeholder="Enter your first name"
-                    className={inputClass}
-                  />
+              <div className="space-y-5">
+                <div className="rounded-2xl border border-[#f0ede9] bg-[#fdfbf7] p-5 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#2D3B35]">Identity</h3>
+                    <p className="text-xs text-[#2D3B35]/60">Basic personal details</p>
+                  </div>
+
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName" className="text-[#2D3B35]">First Name *</Label>
+                      <Input
+                        id="firstName"
+                        value={formData.firstName}
+                        onChange={(e) => updateFormData('firstName', e.target.value)}
+                        placeholder="Enter your first name"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName" className="text-[#2D3B35]">Last Name *</Label>
+                      <Input
+                        id="lastName"
+                        value={formData.lastName}
+                        onChange={(e) => updateFormData('lastName', e.target.value)}
+                        placeholder="Enter your last name"
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName" className="text-[#2D3B35]">Last Name *</Label>
-                  <Input
-                    id="lastName"
-                    value={formData.lastName}
-                    onChange={(e) => updateFormData('lastName', e.target.value)}
-                    placeholder="Enter your last name"
-                    className={inputClass}
-                  />
+
+                <div className="rounded-2xl border border-[#f0ede9] bg-white p-5 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#2D3B35]">Contact & Verification</h3>
+                    <p className="text-xs text-[#2D3B35]/60">How we can reach you and verify your profile</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="phone" className="text-[#2D3B35]">Phone Number *</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => updateFormData('phone', e.target.value)}
+                      placeholder="+63 9XX XXX XXXX"
+                      className={inputClass}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="dateOfBirth" className="text-[#2D3B35]">Date of Birth *</Label>
+                    <Input
+                      id="dateOfBirth"
+                      type="date"
+                      value={formData.dateOfBirth || ''}
+                      onChange={(e) => updateFormData('dateOfBirth', e.target.value)}
+                      className={inputClass}
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="text-[#2D3B35]">Phone Number *</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => updateFormData('phone', e.target.value)}
-                  placeholder="+63 9XX XXX XXXX"
-                  className={inputClass}
-                />
-              </div>
+                <div className="rounded-2xl border border-[#f0ede9] bg-[#fdfbf7] p-5 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#2D3B35]">Professional Summary</h3>
+                    <p className="text-xs text-[#2D3B35]/60">A short introduction for patients</p>
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="dateOfBirth" className="text-[#2D3B35]">Date of Birth *</Label>
-                <Input
-                  id="dateOfBirth"
-                  type="date"
-                  value={formData.dateOfBirth || ''}
-                  onChange={(e) => updateFormData('dateOfBirth', e.target.value)}
-                  className={inputClass}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="bio" className="text-[#2D3B35]">Professional Bio</Label>
-                <Textarea
-                  id="bio"
-                  value={formData.bio}
-                  onChange={(e) => updateFormData('bio', e.target.value)}
-                  placeholder="Tell patients about yourself, your experience, and approach to care..."
-                  className={`min-h-24 resize-none ${inputClass}`}
-                />
+                  <div className="space-y-2">
+                    <Label htmlFor="bio" className="text-[#2D3B35]">Professional Bio</Label>
+                    <Textarea
+                      id="bio"
+                      value={formData.bio}
+                      onChange={(e) => updateFormData('bio', e.target.value)}
+                      placeholder="Tell patients about yourself, your experience, and approach to care..."
+                      className={`min-h-24 resize-none ${inputClass}`}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -350,152 +331,164 @@ export default function DoctorRegistrationPage() {
                 <p className="text-sm text-[#2D3B35]/70">Your credentials and expertise</p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="licenseNumber" className="text-[#2D3B35]">PRC License Number *</Label>
-                <Input
-                  id="licenseNumber"
-                  value={formData.licenseNumber}
-                  onChange={(e) => updateFormData('licenseNumber', e.target.value)}
-                  placeholder="e.g., PRC-0123456"
-                  className="h-11 border-mist focus:border-sage"
-                />
-              </div>
+              <div className="space-y-5">
+                <div className="rounded-2xl border border-[#f0ede9] bg-[#fdfbf7] p-5 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#2D3B35]">Credentials</h3>
+                    <p className="text-xs text-[#2D3B35]/60">License and specialty information</p>
+                  </div>
 
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="department" className="text-[#2D3B35]">Department *</Label>
-                  <Select
-                    value={formData.department}
-                    onValueChange={(value) => updateFormData('department', value as Department)}
-                  >
-                    <SelectTrigger className="h-11 border-mist focus:border-sage">
-                      <SelectValue placeholder="Select department" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {departments.map((dept) => (
-                        <SelectItem key={dept.id} value={dept.id}>
-                          {dept.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="specialization" className="text-[#2D3B35]">Specialization *</Label>
-                  <Input
-                    id="specialization"
-                    value={formData.specialization}
-                    onChange={(e) => updateFormData('specialization', e.target.value)}
-                    placeholder="e.g., Interventional Cardiology"
-                    className="h-11 border-mist focus:border-sage"
-                  />
-                </div>
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="experience" className="text-[#2D3B35]">Years of Experience *</Label>
-                  <Input
-                    id="experience"
-                    type="number"
-                    min="0"
-                    value={formData.yearsOfExperience}
-                    onChange={(e) => updateFormData('yearsOfExperience', parseInt(e.target.value) || 0)}
-                    className="h-11 border-mist focus:border-sage"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="fee" className="text-[#2D3B35]">Consultation Fee (PHP)</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#2D3B35]/70 font-medium">
-                      ₱
-                    </span>
+                  <div className="space-y-2">
+                    <Label htmlFor="licenseNumber" className="text-[#2D3B35]">PRC License Number *</Label>
                     <Input
-                      id="fee"
-                      type="number"
-                      min="0"
-                      value={formData.consultationFee}
-                      onChange={(e) => updateFormData('consultationFee', parseInt(e.target.value) || 0)}
-                      className="h-11 border-mist focus:border-sage pl-8"
+                      id="licenseNumber"
+                      value={formData.licenseNumber}
+                      onChange={(e) => updateFormData('licenseNumber', e.target.value)}
+                      placeholder="e.g., PRC-0123456"
+                      className="h-11 border-mist focus:border-sage"
                     />
                   </div>
+
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="department" className="text-[#2D3B35]">Department *</Label>
+                      <Select
+                        value={formData.department}
+                        onValueChange={(value) => updateFormData('department', value as Department)}
+                      >
+                        <SelectTrigger className="h-11 border-mist focus:border-sage">
+                          <SelectValue placeholder="Select department" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {departments.map((dept) => (
+                            <SelectItem key={dept.id} value={dept.id}>
+                              {dept.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="specialization" className="text-[#2D3B35]">Specialization *</Label>
+                      <Input
+                        id="specialization"
+                        value={formData.specialization}
+                        onChange={(e) => updateFormData('specialization', e.target.value)}
+                        placeholder="e.g., Interventional Cardiology"
+                        className="h-11 border-mist focus:border-sage"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-[#f0ede9] bg-white p-5 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#2D3B35]">Practice Profile</h3>
+                    <p className="text-xs text-[#2D3B35]/60">Experience, education, and consultation details</p>
+                  </div>
+
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="experience" className="text-[#2D3B35]">Years of Experience *</Label>
+                      <Input
+                        id="experience"
+                        type="number"
+                        min="0"
+                        value={formData.yearsOfExperience}
+                        onChange={(e) => updateFormData('yearsOfExperience', parseInt(e.target.value) || 0)}
+                        className="h-11 border-mist focus:border-sage"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="fee" className="text-[#2D3B35]">Consultation Fee (PHP)</Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#2D3B35]/70 font-medium">
+                          ₱
+                        </span>
+                        <Input
+                          id="fee"
+                          type="number"
+                          min="0"
+                          value={formData.consultationFee}
+                          onChange={(e) => updateFormData('consultationFee', parseInt(e.target.value) || 0)}
+                          className="h-11 border-mist focus:border-sage pl-8"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="education" className="text-[#2D3B35]">Education & Certifications *</Label>
+                    <Textarea
+                      id="education"
+                      value={formData.education}
+                      onChange={(e) => updateFormData('education', e.target.value)}
+                      placeholder="e.g., MD from UP Manila, Cardiology Fellowship at Philippine Heart Center"
+                      className="min-h-20 border-mist focus:border-sage resize-none"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="languages" className="text-[#2D3B35]">Languages Spoken</Label>
+                    <Input
+                      id="languages"
+                      value={languagesText}
+                      onChange={(e) => setLanguagesText(e.target.value)}
+                      placeholder="English, Filipino, Mandarin (comma-separated)"
+                      className="h-11 border-mist focus:border-sage"
+                    />
+                  </div>
+
+                  <div className="flex items-start gap-3 rounded-xl border border-[#f0ede9] bg-[#fdfbf7] p-4">
+                    <Checkbox
+                      id="acceptsInsurance"
+                      checked={!!formData.acceptsInsurance}
+                      onCheckedChange={(checked) => updateFormData('acceptsInsurance', !!checked)}
+                      className="mt-0.5 data-[state=checked]:bg-sage data-[state=checked]:border-sage"
+                    />
+                    <div className="space-y-1">
+                      <Label htmlFor="acceptsInsurance" className="text-[#2D3B35] cursor-pointer">
+                        Do you accept medical insurance as payment?
+                      </Label>
+                      <p className="text-xs text-[#2D3B35]/60">
+                        Select this if you accept HMO, PhilHealth, or other insurance coverage.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-[#f0ede9] bg-[#fdfbf7] p-5 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#2D3B35]">Practice Location</h3>
+                    <p className="text-xs text-[#2D3B35]/60">Where patients can find you</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="location" className="text-[#2D3B35]">Location *</Label>
+                    <Select
+                      value={formData.location}
+                      onValueChange={(value) => updateFormData('location', value)}
+                    >
+                      <SelectTrigger className="h-11 border-mist focus:border-sage">
+                        <SelectValue placeholder="Select your location" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {metroManilaLocations.map((loc) => (
+                          <SelectItem key={loc} value={loc}>
+                            {loc}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="education" className="text-[#2D3B35]">Education & Certifications *</Label>
-                <Textarea
-                  id="education"
-                  value={formData.education}
-                  onChange={(e) => updateFormData('education', e.target.value)}
-                  placeholder="e.g., MD from UP Manila, Cardiology Fellowship at Philippine Heart Center"
-                  className="min-h-20 border-mist focus:border-sage resize-none"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="languages" className="text-[#2D3B35]">Languages Spoken</Label>
-                <Input
-                  id="languages"
-                  value={languagesText}
-                  onChange={(e) => setLanguagesText(e.target.value)}
-                  placeholder="English, Filipino, Mandarin (comma-separated)"
-                  className="h-11 border-mist focus:border-sage"
-                />
-              </div>
             </div>
           )}
 
-          {/* Step 3: Location */}
+          {/* Step 3: Availability */}
           {currentStep === 3 && (
-            <div className="space-y-6">
-              <div className="text-center mb-6">
-                <h2 className="text-xl font-semibold text-[#2D3B35]">Practice Location</h2>
-                <p className="text-sm text-[#2D3B35]/70">Where are you based in Metro Manila?</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="location" className="text-[#2D3B35]">Location *</Label>
-                <Select
-                  value={formData.location}
-                  onValueChange={(value) => updateFormData('location', value)}
-                >
-                  <SelectTrigger className="h-11 border-mist focus:border-sage">
-                    <SelectValue placeholder="Select your location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {metroManilaLocations.map((loc) => (
-                      <SelectItem key={loc} value={loc}>
-                        {loc}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  id="acceptsInsurance"
-                  checked={formData.acceptsInsurance}
-                  onCheckedChange={(checked) => updateFormData('acceptsInsurance', checked)}
-                  className="data-[state=checked]:bg-sage data-[state=checked]:border-sage"
-                />
-                <Label htmlFor="acceptsInsurance" className="text-[#2D3B35] cursor-pointer">
-                  I accept health insurance (HMO, PhilHealth, etc.)
-                </Label>
-              </div>
-
-              <div className="bg-cream/30 rounded-lg p-4">
-                <h4 className="font-medium text-foreground mb-2">About Your Location</h4>
-                <p className="text-sm text-foreground/70">
-                  This helps patients find doctors near them. You can also provide teleconsultation services to patients anywhere in Metro Manila.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Step 4: Availability */}
-          {currentStep === 4 && (
             <div className="space-y-6">
               <div className="text-center mb-6">
                 <h2 className="text-xl font-semibold text-[#2D3B35]">Availability Schedule</h2>
@@ -590,7 +583,7 @@ export default function DoctorRegistrationPage() {
               </Button>
             )}
 
-            {currentStep < 4 ? (
+            {currentStep < 3 ? (
               <Button
                 type="button"
                 onClick={handleNext}

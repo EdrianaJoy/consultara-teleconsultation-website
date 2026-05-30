@@ -1,8 +1,9 @@
 'use client';
 
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { Appointment, AppointmentStatus, Conversation, MedicalRecord, Message, Notification, Prescription } from './types';
 import { sampleAppointments, sampleConversations, sampleMedicalRecords, sampleMessages, sampleNotifications } from './data';
+import { useAuth } from './auth-context';
 
 interface AppDataState {
   appointments: Appointment[];
@@ -78,6 +79,7 @@ function normalizeConversation(conversation: Conversation): Conversation {
 }
 
 export function AppDataProvider({ children }: { children: React.ReactNode }) {
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [state, setState] = useState<AppDataState>({
     appointments: [],
     medicalRecords: [],
@@ -88,43 +90,81 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     isLoading: true,
   });
 
+  const loadData = useCallback(async () => {
+    try {
+      const response = await apiRequest<Pick<AppDataState, 'appointments' | 'medicalRecords' | 'notifications' | 'conversations' | 'messages' | 'prescriptions'>>('/api/state');
+      setState({
+        appointments: response.appointments,
+        medicalRecords: response.medicalRecords.map(record => ({
+          ...record,
+          type: record.type === 'consultation' ? 'consultations' : record.type,
+        })),
+        notifications: response.notifications,
+        conversations: response.conversations.map(normalizeConversation),
+        messages: response.messages.map(normalizeMessage),
+        prescriptions: response.prescriptions,
+        isLoading: false,
+      });
+    } catch (error) {
+      console.error('Error loading app data:', error);
+      setState({
+        appointments: sampleAppointments,
+        medicalRecords: sampleMedicalRecords.map(record => ({
+          ...record,
+          type: record.type === 'consultation' ? 'consultations' : record.type,
+        })),
+        notifications: sampleNotifications,
+        conversations: sampleConversations.map(normalizeConversation),
+        messages: sampleMessages.map(normalizeMessage),
+        prescriptions: sampleMedicalRecords
+          .map(record => record.prescription)
+          .filter((prescription): prescription is Prescription => Boolean(prescription)),
+        isLoading: false,
+      });
+    }
+  }, []);
+
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const response = await apiRequest<Pick<AppDataState, 'appointments' | 'medicalRecords' | 'notifications' | 'conversations' | 'messages' | 'prescriptions'>>('/api/state');
-        setState({
-          appointments: response.appointments,
-          medicalRecords: response.medicalRecords.map(record => ({
-            ...record,
-            type: record.type === 'consultation' ? 'consultations' : record.type,
-          })),
-          notifications: response.notifications,
-          conversations: response.conversations.map(normalizeConversation),
-          messages: response.messages.map(normalizeMessage),
-          prescriptions: response.prescriptions,
-          isLoading: false,
-        });
-      } catch (error) {
-        console.error('Error loading app data:', error);
-        setState({
-          appointments: sampleAppointments,
-          medicalRecords: sampleMedicalRecords.map(record => ({
-            ...record,
-            type: record.type === 'consultation' ? 'consultations' : record.type,
-          })),
-          notifications: sampleNotifications,
-          conversations: sampleConversations.map(normalizeConversation),
-          messages: sampleMessages.map(normalizeMessage),
-          prescriptions: sampleMedicalRecords
-            .map(record => record.prescription)
-            .filter((prescription): prescription is Prescription => Boolean(prescription)),
-          isLoading: false,
-        });
+    void loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    if (isAuthLoading) {
+      return;
+    }
+
+    const refresh = () => {
+      void loadData();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refresh();
       }
     };
 
-    void loadData();
-  }, []);
+    const intervalId = window.setInterval(refresh, 15000);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isAuthLoading, loadData]);
+
+  const visibleNotifications = useMemo(() => {
+    if (!user) {
+      return [];
+    }
+
+    const allowedTypes = user.role === 'doctor'
+      ? new Set(['appointment-created', 'appointment-rescheduled', 'appointment-cancelled'])
+      : new Set(['appointment-created', 'appointment-rescheduled', 'appointment-cancelled']);
+
+    return state.notifications.filter(notification => notification.userId === user.id && allowedTypes.has(notification.type));
+  }, [state.notifications, user]);
 
   const createAppointment = useCallback(async (appointmentData: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>) => {
     const now = new Date().toISOString();
@@ -277,7 +317,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const getUnreadCount = useCallback((userId: string) => state.notifications.filter(notification => notification.userId === userId && !notification.isRead && !notification.read).length, [state.notifications]);
+  const getUnreadCount = useCallback((userId: string) => visibleNotifications.filter(notification => notification.userId === userId && !notification.isRead && !notification.read).length, [visibleNotifications]);
 
   const addMessage = useCallback((message: Message) => {
     const normalizedMessage = normalizeMessage(message);
@@ -397,6 +437,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
   const value: AppDataContextType = {
     ...state,
+    notifications: visibleNotifications,
     createAppointment,
     updateAppointment,
     updateAppointmentStatus,

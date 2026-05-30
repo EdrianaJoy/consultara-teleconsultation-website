@@ -89,9 +89,9 @@ export default function PatientDashboard() {
   // Get patient name from profile
   const patientName = patientProfile?.firstName || "User";
 
-  // Get upcoming appointments
+  // Get upcoming appointments (match patient profile id when available)
   const upcomingAppointments = appointments
-    .filter(apt => apt.patientId === user?.id && apt.status === "confirmed")
+    .filter(apt => apt.patientId === (patientProfile?.id || user?.id) && apt.status === "confirmed")
     .slice(0, 3);
 
   /**
